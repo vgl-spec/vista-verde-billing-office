@@ -6,6 +6,8 @@ The billing system that runs on the office server computer. The other computers 
   then double-click **SETUP.bat**).
 * Every day: **START.bat** on the server computer.
 * New version: close the server window, double-click **UPDATE.bat** (it backs up the records first), then **START.bat**.
+* Take back what SETUP changed on this computer (firewall openings, start-up task, shortcuts): **UNDO SETUP.bat**.
+  The records stay.
 
 Downloading and updating need no GitHub account. Homeowner records never leave the office computer: they are
 not part of this folder's downloads and are never uploaded.

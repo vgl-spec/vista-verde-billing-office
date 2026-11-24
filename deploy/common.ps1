@@ -9,6 +9,49 @@ $script:Root = Split-Path -Parent $PSScriptRoot   # the BMS folder (this file li
 $script:Port = if ($env:BMS_PORT) { [int]$env:BMS_PORT } else { 8765 }
 $script:FirewallRule = 'Vista Verde billing'
 $script:VirtualAdapters = 'vEthernet|WSL|VirtualBox|VMware|Loopback|Bluetooth'
+$script:TaskName = 'Vista Verde billing server'
+$script:Shortcuts = @('Start Billing Server.lnk', 'Open Billing.url')
+# What SETUP changed on this computer, so UNDO SETUP.bat can put back exactly that (records are never touched).
+# Inside app\data, which git never tracks or overwrites.
+$script:SetupDir = Join-Path $script:Root 'app\data\setup'
+$script:SetupRecord = Join-Path $script:SetupDir 'changes.json'
+
+function Read-SetupChanges {
+    # networks_set_private: network names SETUP switched from Public to Private.
+    # python_blocks_disabled: firewall BLOCK rules for python.exe that SETUP switched off (name + program).
+    # firewall_backup: the whole firewall as it was before the first SETUP (netsh export), the last-resort undo.
+    $record = [ordered]@{ networks_set_private = @(); python_blocks_disabled = @(); firewall_backup = '' }
+    if (Test-Path -LiteralPath $script:SetupRecord) {
+        $saved = Get-Content -LiteralPath $script:SetupRecord -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($saved.networks_set_private) { $record.networks_set_private = @($saved.networks_set_private) }
+        if ($saved.python_blocks_disabled) { $record.python_blocks_disabled = @($saved.python_blocks_disabled) }
+        if ($saved.firewall_backup) { $record.firewall_backup = [string]$saved.firewall_backup }
+    }
+    return $record
+}
+
+function Save-SetupChanges($Record) {
+    New-Item -ItemType Directory -Force -Path $script:SetupDir | Out-Null
+    ConvertTo-Json -InputObject $Record -Depth 4 | Set-Content -LiteralPath $script:SetupRecord -Encoding UTF8
+}
+
+function Test-ScheduledTask([string]$Name) {
+    # schtasks writes "cannot find the file" to stderr when the task is absent; under ErrorActionPreference Stop,
+    # Windows PowerShell 5.1 turns that line into a terminating error (seen in the undo dry run).
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        schtasks.exe /Query /TN $Name 2>&1 | Out-Null
+        return $LASTEXITCODE -eq 0
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+function Test-FirewallRule([string]$Name) {
+    netsh advfirewall firewall show rule name="$Name" | Out-Null
+    return $LASTEXITCODE -eq 0
+}
 
 function Find-Python {
     # The py launcher (python.org installer) first, then python on PATH. Returns @(exe, args...) or $null.

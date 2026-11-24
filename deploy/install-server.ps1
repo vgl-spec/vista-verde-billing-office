@@ -55,14 +55,28 @@ Invoke-Python $python @('-m', 'pip', 'install', '--disable-pip-version-check', '
 if ($LASTEXITCODE -ne 0) { Write-Host '  Could not install it (no internet?). Everything except Import Excel still works.' -ForegroundColor Yellow }
 else { Write-Host '  Done.' -ForegroundColor Green }
 
-# 3. Network: private profile + firewall opening for the billing port only
+# 3. Network: private profile + firewall opening for the billing port only.
+# Nothing here touches the workgroup, addresses, adapters, file sharing or printers. Every change is written to
+# app\data\setup\changes.json so UNDO SETUP.bat can reverse exactly it.
 Write-Host '  Step 3 of 5: let the other office computers in' -ForegroundColor Cyan
+$changes = Read-SetupChanges
+if (-not $changes.firewall_backup) {
+    # The whole firewall as it is before the first setup: a last-resort way back (see UNDO SETUP.bat).
+    New-Item -ItemType Directory -Force -Path $script:SetupDir | Out-Null
+    $firewallBackup = Join-Path $script:SetupDir 'firewall-before-setup.wfw'
+    netsh advfirewall export "$firewallBackup" | Out-Null
+    if ($LASTEXITCODE -eq 0) { $changes.firewall_backup = $firewallBackup; Save-SetupChanges $changes }
+    else { Write-Host '  Could not save a copy of the firewall settings first (continuing).' -ForegroundColor Yellow }
+}
 try {
     $public = @(Invoke-Cim { Get-NetConnectionProfile -ErrorAction Stop } | Where-Object { $_.NetworkCategory -eq 'Public' })
+    if (-not $public.Count) { Write-Host '  Network is already Private: nothing to change.' -ForegroundColor Green }
     foreach ($connection in $public) {
         Write-Host "  The network '$($connection.Name)' is set to Public, which hides this computer from the others." -ForegroundColor Yellow
         if (Ask '  Is this the office (or home) network you trust? Set it to Private?') {
             Invoke-Cim { Set-NetConnectionProfile -InterfaceIndex $connection.InterfaceIndex -NetworkCategory Private -ErrorAction Stop }
+            $changes.networks_set_private = @($changes.networks_set_private | Where-Object { $_ -ne $connection.Name }) + $connection.Name
+            Save-SetupChanges $changes
             Write-Host '  Set to Private.' -ForegroundColor Green
         }
     }
@@ -87,7 +101,11 @@ if ($blocking.Count) {
     Write-Host '  Windows has a rule BLOCKING Python on this network (someone pressed Cancel on the "allow Python?"' -ForegroundColor Yellow
     Write-Host '  question). While it is on, the laptops cannot reach the billing server.' -ForegroundColor Yellow
     if (Ask '  Switch that block off for private networks?') {
-        foreach ($rule in $blocking) { $rule.Enabled = $false }
+        foreach ($rule in $blocking) {
+            $rule.Enabled = $false
+            $changes.python_blocks_disabled = @($changes.python_blocks_disabled) + [pscustomobject]@{ name = $rule.Name; program = $rule.ApplicationName }
+        }
+        Save-SetupChanges $changes
         Write-Host '  Switched off.' -ForegroundColor Green
     }
 }
@@ -108,7 +126,7 @@ Write-Host '  "Start Billing Server" and "Open Billing" are on the desktop.' -Fo
 
 # 5. Start automatically when this computer's user signs in
 Write-Host '  Step 5 of 5: start automatically' -ForegroundColor Cyan
-$taskName = 'Vista Verde billing server'
+$taskName = $script:TaskName
 if (Ask '  Start the billing server automatically when this computer signs in?') {
     $startScript = Join-Path $PSScriptRoot 'start-server.ps1'
     # schtasks, not Register-ScheduledTask: no dependency on Windows' management service. /IT = runs only while
@@ -134,6 +152,7 @@ Set-Content -LiteralPath $addressFile -Value $lines -Encoding UTF8
 Write-Host ''
 Write-Host '  Setup finished.' -ForegroundColor Green
 Write-Host "  Addresses for the laptops are saved in: $addressFile"
+Write-Host '  To take back everything this setup changed on this computer: UNDO SETUP.bat (records are kept).'
 if (Test-ServerRunning) {
     Write-Host '  The billing server is already running.' -ForegroundColor Green
 } else {
