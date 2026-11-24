@@ -1,0 +1,1449 @@
+/* Vista Verde HOA Billing - design system (plain CSS, no inline styles, CSP-safe).
+
+   Language: "ledger" layout. One sheet of paper; structure comes from type, 1px hairlines,
+   alignment and white space. The only box on a page is `.well`. Users are older office staff:
+   base type 18px phone -> 20px desktop, line-height 1.55, controls >= 2.75rem (49.5px+).
+
+   Brand: navy #303883 (primary fill / text), yellow #EFE545 (fill behind navy text, focus halo,
+   never text on a light ground). Red guide dot = "the next action waits here".
+
+   Contrast, measured (WCAG relative luminance). Body text needs >= 4.5, UI parts/large >= 3.
+   LIGHT
+     ink #14172B on canvas #FAF9F5 ................ 16.79    on surface #FFFFFF ... 17.69
+     muted #4B5069 on canvas ...................... 7.52     on surface ........... 7.92
+     muted on soft #E9EBF8 ........................ 6.68
+     navy #303883 (links) on canvas ............... 9.87     on surface ........... 10.40
+     white on navy (primary button) ............... 10.40
+     navy on yellow #EFE545 (active nav, steps) ... 7.91     ink on yellow ........ 13.45
+     yellow on navy ............................... 7.91
+     input border #7C819E on surface .............. 3.82 (UI boundary >= 3)
+     red dot #D92D20 on canvas .................... 4.59     on yellow ............ 3.67
+     white on dot (bell badge) .................... 4.83
+     white on danger button #B42318 ............... 6.57
+     ink on soft / danger-soft / success-soft / warn-soft ... 14.91 / 15.47 / 15.49 / 15.98
+     status text: success #05603A on surface 7.66, warn #7A4100 on surface 8.13,
+                  danger #B42318 on surface 6.57
+     hairline #D3D6E3 on canvas ................... 1.37 (decorative separator only)
+   DARK
+     ink #EEF0FA on canvas #0E1024 ................ 16.53    on surface #161A38 ... 14.92
+     muted #B4BADB on canvas ...................... 9.83     on surface ........... 8.87
+     link #B9C2FF on canvas ....................... 10.93    on surface ........... 9.87
+     dark ink #14172B on yellow (primary button) .. 13.45
+     yellow focus ring on canvas .................. 14.28    on surface ........... 12.88
+     input border #6E75A8 on surface .............. 3.85
+     red dot #FF6B5E on canvas .................... 6.72     on surface ........... 6.07
+     dark ink on dot (bell badge) ................. 6.33
+     dark ink on danger button #FF9C93 ............ 8.78
+     ink on soft / danger-soft / success-soft / warn-soft ... 12.22 / 13.66 / 12.11 / 11.48
+     status text: success #7BE0A4 on surface 10.53, warn #F5D77A 12.01, danger #FF9C93 8.42
+   The dot sits in a 2px ring of the ground colour so it stays visible on yellow (red/yellow 2.12 in
+   dark, so the ring is what carries it there).
+*/
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("atkinson-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("atkinson-bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+/* ---------- 1. Tokens ---------- */
+
+:root {
+  color-scheme: light dark;
+
+  /* Receipt paper (preview of a pre-printed OR / AR): always white with black details, in either theme. */
+  --paper: #FFFFFF;
+  --paper-ink: #000000;
+  --paper-guide: #8A93A8;
+  --paper-rule: #C2C8D6;
+  --paper-rule-soft: #DCE0E8;
+
+  --canvas: #FAF9F5;
+  --surface: #FFFFFF;
+  --soft: #E9EBF8;
+  --ink: #14172B;
+  --muted: #4B5069;
+  --line: #D3D6E3;
+  --line-strong: #7C819E;
+  --link: #303883;
+
+  --primary: #303883;
+  --on-primary: #FFFFFF;
+  --yellow: #EFE545;
+  --on-yellow: #303883;
+  --focus: #303883;
+
+  --dot: #D92D20;
+  --dot-ink: #FFFFFF;
+  --danger: #B42318;
+  --danger-soft: #FDECEA;
+  --danger-btn: #B42318;
+  --on-danger-btn: #FFFFFF;
+  --success: #05603A;
+  --live-glow: #FFF4B8;   /* a row another computer just added or changed */
+  --success-soft: #E3F4EA;
+  --warn: #7A4100;
+  --warn-soft: #FDF3D6;
+
+  --scrim: rgba(20, 23, 43, 0.55);
+  --sheet-shadow: 0 -0.5rem 2rem rgba(20, 23, 43, 0.25);
+  --pop-shadow: 0 0.6rem 1.75rem rgba(20, 23, 43, 0.2);
+
+  --font-sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  --font-title: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+
+  --control: 2.75rem;
+  --radius: 0.4rem;
+  --gutter: 1rem;
+  --gap: 1rem;
+  --block-gap: 2.25rem;
+  --topbar: 4rem;
+  --tabbar: 4.5rem;
+  --side-w: 13.5rem;
+  --title-size: 1.75rem;
+}
+
+/* Dark follows the OS until the user picks a theme (app.js then sets data-theme). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #0E1024;
+    --surface: #161A38;
+    --soft: #232857;
+    --ink: #EEF0FA;
+    --muted: #B4BADB;
+    --line: #2E3466;
+    --line-strong: #6E75A8;
+    --link: #B9C2FF;
+    --primary: #EFE545;
+    --on-primary: #14172B;
+    --focus: #EFE545;
+    --dot: #FF6B5E;
+    --dot-ink: #14172B;
+    --danger: #FF9C93;
+    --danger-soft: #3B1A1E;
+    --danger-btn: #FF9C93;
+    --on-danger-btn: #14172B;
+    --success: #7BE0A4;
+  --live-glow: #4A4410;
+    --success-soft: #133323;
+    --warn: #F5D77A;
+    --warn-soft: #3A3010;
+    --scrim: rgba(0, 0, 0, 0.65);
+    --sheet-shadow: 0 -0.5rem 2rem rgba(0, 0, 0, 0.6);
+  --pop-shadow: 0 0.6rem 1.75rem rgba(0, 0, 0, 0.6);
+  }
+}
+
+:root[data-theme="dark"] {
+  --canvas: #0E1024;
+  --surface: #161A38;
+  --soft: #232857;
+  --ink: #EEF0FA;
+  --muted: #B4BADB;
+  --line: #2E3466;
+  --line-strong: #6E75A8;
+  --link: #B9C2FF;
+  --primary: #EFE545;
+  --on-primary: #14172B;
+  --focus: #EFE545;
+  --dot: #FF6B5E;
+  --dot-ink: #14172B;
+  --danger: #FF9C93;
+  --danger-soft: #3B1A1E;
+  --danger-btn: #FF9C93;
+  --on-danger-btn: #14172B;
+  --success: #7BE0A4;
+  --live-glow: #4A4410;
+  --success-soft: #133323;
+  --warn: #F5D77A;
+  --warn-soft: #3A3010;
+  --scrim: rgba(0, 0, 0, 0.65);
+  --sheet-shadow: 0 -0.5rem 2rem rgba(0, 0, 0, 0.6);
+  --pop-shadow: 0 0.6rem 1.75rem rgba(0, 0, 0, 0.6);
+}
+
+/* One size scale per device class, interpolated between phone (<640) and laptop (1024+).
+   Client asked for a standard size, only slightly enlarged: 16px phone → 17px laptop (was 18 → 20px,
+   which crowded the layout). */
+html {
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (min-width: 640px) {
+  html { font-size: clamp(100%, calc(100% + (100vw - 640px) * 0.0026), 106.25%); }
+  :root { --gutter: 1.5rem; --gap: 1.25rem; --block-gap: 2.75rem; --title-size: 1.9rem; }
+}
+
+@media (min-width: 768px) {
+  :root { --topbar: 4.25rem; }
+}
+
+@media (min-width: 1024px) {
+  html { font-size: 106.25%; }
+  :root { --gutter: 2rem; --title-size: 2.1rem; --block-gap: 3rem; }
+}
+
+@media (min-width: 1100px) {
+  :root { --side-w: 15rem; }
+}
+
+/* ---------- 2. Base ---------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.55;
+  overflow-wrap: break-word;
+}
+
+h1, h2, h3, p, ul, ol, dl, dd, figure { margin: 0; }
+
+a { color: var(--link); text-underline-offset: 0.18em; }
+a:hover { text-decoration-thickness: 2px; }
+
+img, svg { max-width: 100%; }
+
+/* Focus: navy (dark theme: yellow) line with a yellow halo inside it. Never removed. */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--yellow);
+  border-radius: var(--radius);
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0.75rem;
+  z-index: 100;
+  background: var(--yellow);
+  color: var(--on-yellow);
+  font-weight: 700;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+}
+
+.skip:focus { left: 0.75rem; }
+
+.js-only { display: none !important; }
+html.js .js-only { display: inline-flex !important; }
+
+.muted { color: var(--muted); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- 3. Red guide dot ---------- */
+
+.dot {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-inline: 0.4rem;
+  border-radius: 50%;
+  background: var(--dot);
+  box-shadow: 0 0 0 2px var(--surface);
+  vertical-align: middle;
+}
+
+/* The pulse is a second red circle that grows and fades; the dot itself never moves. */
+.dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--dot);
+  animation: dot-ping 2.4s ease-out infinite;
+}
+
+@keyframes dot-ping {
+  0% { transform: scale(1); opacity: 0.55; }
+  75%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* ---------- 4. Buttons ---------- */
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--control);
+  padding: 0.4rem 1.25rem;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.6; cursor: progress; transform: none; }
+
+.btn-primary { background: var(--primary); color: var(--on-primary); }
+.btn-primary:hover { text-decoration: underline; text-decoration-thickness: 2px; }
+
+.btn-secondary { background: transparent; color: var(--link); border-color: var(--line-strong); }
+.btn-secondary:hover { background: var(--soft); }
+
+.btn-danger { background: var(--danger-btn); color: var(--on-danger-btn); }
+.btn-quiet { background: transparent; color: var(--link); padding-inline: 0.75rem; }
+.btn-quiet:hover { background: var(--soft); }
+
+/* On a button the dot hangs off the corner so it never changes the label's width. */
+.btn > .dot { position: absolute; top: -0.3rem; right: -0.3rem; margin: 0; }
+
+/* ---------- 5. App shell ---------- */
+
+.shell { min-height: 100vh; }
+.side { display: none; }
+.stage { min-width: 0; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--topbar);
+  padding: 0.5rem var(--gutter);
+  background: var(--canvas);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar-brand { display: inline-flex; flex: none; }
+.brand-mark { width: 2.5rem; height: 2.5rem; display: block; }
+
+.topbar-ctx {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-tools { display: flex; align-items: center; gap: 0.5rem; }
+
+.who { display: none; line-height: 1.25; text-align: right; }
+.who-name { display: block; font-weight: 700; }
+.who-role { display: block; color: var(--muted); font-size: 0.875rem; }
+.signout { display: none; margin: 0; }
+
+.bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--control);
+  min-height: var(--control);
+  border-radius: var(--radius);
+  color: var(--link);
+}
+
+.bell:hover { background: var(--soft); }
+
+.bell-count {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.05rem;
+  min-width: 1.35rem;
+  padding: 0 0.3rem;
+  border-radius: 1rem;
+  background: var(--dot);
+  color: var(--dot-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.35rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Each theme shows the icon and label of the theme you would switch TO. */
+.theme-toggle .to-dark, .theme-toggle .to-light { display: inline-flex; align-items: center; gap: 0.4rem; }
+.theme-toggle .to-light, .theme-toggle .lbl { display: none; }
+:root[data-theme="dark"] .theme-toggle .to-dark { display: none; }
+:root[data-theme="dark"] .theme-toggle .to-light { display: inline-flex; }
+.sheet .theme-toggle .lbl { display: inline; }
+
+main {
+  padding: 1.5rem var(--gutter) calc(var(--tabbar) + env(safe-area-inset-bottom) + 2rem);
+  max-width: 76rem;
+}
+
+main:focus { outline: none; }
+
+.ico {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Phone tab bar: four daily screens plus Menu. */
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  min-height: var(--tabbar);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 3rem;
+  padding: 0.3rem 0.1rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  text-decoration: none;
+}
+
+.tab .pill-ico {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 2rem;
+  border-radius: 1rem;
+  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab[aria-current="page"] { color: var(--ink); }
+.tab[aria-current="page"] .pill-ico { background: var(--yellow); color: var(--on-yellow); }
+
+.tab .dot { position: absolute; top: 0.2rem; right: 1.15rem; margin: 0; }
+
+/* Menu bottom sheet. :target opens it with no JavaScript; app.js adds .is-open as well. */
+.sheet { display: none; position: fixed; inset: 0; z-index: 40; }
+.sheet:target, .sheet.is-open { display: block; }
+
+.sheet-backdrop { position: absolute; inset: 0; background: var(--scrim); }
+
+.sheet-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 0.75rem var(--gutter) calc(1.25rem + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-radius: 1.25rem 1.25rem 0 0;
+  box-shadow: var(--sheet-shadow);
+  animation: sheet-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes sheet-in {
+  from { transform: translateY(2rem); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.sheet-handle { width: 3rem; height: 0.3rem; margin: 0 auto 1rem; border-radius: 1rem; background: var(--line-strong); }
+.sheet-title { font-family: var(--font-title); font-size: 1.4rem; margin-bottom: 0.5rem; }
+.sheet-nav { display: grid; }
+
+.sheet-link {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 3.25rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.sheet-link[aria-current="page"] .ico { background: var(--yellow); color: var(--on-yellow); border-radius: 50%; padding: 0.15rem; box-sizing: content-box; }
+
+.sheet-me { display: grid; gap: 0.75rem; margin-top: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.sheet-me .who { display: block; text-align: left; }
+.sheet-me .signout { display: block; }
+.sheet-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.sheet-actions > * { flex: 1 1 8rem; }
+
+html.sheet-open { overflow: hidden; }
+
+@media (min-width: 768px) {
+  .shell { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); }
+
+  .side {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    height: 100vh;
+    padding: 1.25rem 0.75rem;
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+  }
+
+  .brand { display: flex; align-items: center; gap: 0.75rem; padding: 0 0.5rem; color: var(--ink); text-decoration: none; }
+  .brand .brand-mark { width: 3rem; height: 3rem; }
+  .brand-text { display: grid; line-height: 1.25; }
+  .brand-text strong { font-family: var(--font-title); font-size: 1.3rem; }
+  .brand-text span { color: var(--muted); font-size: 0.875rem; }
+
+  .side-nav { display: grid; gap: 0.15rem; }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius);
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: none;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+
+  .nav-link:hover { background: var(--soft); }
+  .nav-link .dot { margin: 0 0 0 auto; box-shadow: 0 0 0 2px var(--canvas); }
+
+  /* Active item: yellow fill behind navy text, the logo's own pairing. */
+  .nav-link[aria-current="page"] { background: var(--yellow); color: var(--on-yellow); }
+  .nav-link[aria-current="page"] .dot { box-shadow: 0 0 0 2px var(--yellow); }
+
+  .topbar-brand { display: none; }
+  .who, .signout { display: block; }
+  .theme-toggle .lbl { display: inline; }
+
+  .tabbar, .sheet { display: none !important; }
+  main { padding-bottom: 4rem; }
+}
+
+/* ---------- 6. Page structure: headings, sections, rules ---------- */
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem var(--gap);
+  padding-bottom: 1.25rem;
+  border-bottom: 3px double var(--line-strong);
+}
+
+/* The title block is pinned to the top: with flex-end, a page whose action button was taller than its title
+   pushed the heading down, so the title sat at a different height on different pages. */
+.page-head > :first-child { align-self: flex-start; }
+
+.page-head h1 {
+  font-family: var(--font-title);
+  font-size: var(--title-size);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.lead { color: var(--muted); max-width: 42rem; margin-top: 0.35rem; }
+.page-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+.block { margin-top: var(--block-gap); padding-top: 1.25rem; border-top: 1px solid var(--line); }
+.page-head + .block { margin-top: 1.5rem; }
+
+.block-head { margin-bottom: 1rem; }
+.block-head h2 { font-size: 1.35rem; line-height: 1.3; }
+.block-head .lead { margin-top: 0.2rem; }
+
+.well { padding: 1.25rem; background: var(--soft); border-radius: 0.75rem; }
+
+.empty { padding: 1.5rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); }
+.empty p + * { margin-top: 1rem; }
+
+/* ---------- 7. Notices, status, flash ---------- */
+
+.flash { margin-bottom: 1.25rem; }
+
+.notice {
+  padding: 0.85rem 1rem;
+  border-left: 0.3rem solid var(--link);
+  background: var(--soft);
+  color: var(--ink);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.notice + .notice { margin-top: 0.75rem; }
+.notice-label { margin-right: 0.35rem; }
+.notice-success { border-left-color: var(--success); background: var(--success-soft); }
+.notice-warn { border-left-color: var(--warn); background: var(--warn-soft); }
+.notice-danger { border-left-color: var(--danger); background: var(--danger-soft); }
+.notice-action { display: block; margin-top: 0.5rem; }
+
+.status { display: inline-flex; align-items: center; gap: 0.45rem; font-weight: 700; white-space: nowrap; }
+
+.status::before {
+  content: "";
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--status-color, var(--muted));
+}
+
+.status-info { --status-color: var(--link); }
+.status-success { --status-color: var(--success); }
+.status-warn { --status-color: var(--warn); }
+.status-danger { --status-color: var(--danger); }
+
+/* ---------- 8. Tables (ledger) ---------- */
+
+.ledger { width: 100%; border-collapse: collapse; }
+
+.ledger th {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 2px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.ledger td { padding: 0.8rem 0.75rem; border-bottom: 1px solid var(--line); vertical-align: middle; overflow-wrap: anywhere; }
+.ledger th.num { text-align: right; }
+.ledger tbody tr:hover { background: var(--soft); }
+.ledger td a { font-weight: 700; }
+.ledger tr[hidden] { display: none !important; }
+.ledger tfoot td { border-top: 2px solid var(--line-strong); border-bottom: 0; font-weight: 700; }
+.table-empty { color: var(--muted); text-align: center; }
+
+/* Sortable headers: server links on paged tables, buttons added by app.js on the rest. Same look. */
+.sort-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sort-ico { flex: none; }
+.sort-link:hover { color: var(--link); text-decoration: underline; }
+.sort-ico { display: inline-flex; opacity: 0.45; }
+.sort-ico .ico { width: 1rem; height: 1rem; stroke: currentColor; stroke-width: 2; fill: none; }
+.ledger th[aria-sort] { color: var(--link); }
+.ledger th[aria-sort] .sort-ico { opacity: 1; }
+
+/* In-page search for unpaged tables (added by app.js). */
+.table-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; margin-bottom: 0.75rem; }
+.table-search { position: relative; display: flex; align-items: center; flex: 1 1 16rem; max-width: 24rem; }
+.table-search .ico { position: absolute; left: 0.7rem; width: 1.1rem; height: 1.1rem; stroke: var(--muted); stroke-width: 2; fill: none; pointer-events: none; }
+.table-search input { width: 100%; padding-left: 2.25rem; }
+.table-count { color: var(--muted); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+
+/* Copy button beside account numbers, names and receipt numbers. */
+.copy-cell { display: inline-flex; align-items: center; gap: 0.3rem; max-width: 100%; }
+.copy-text { min-width: 0; }
+.copy-btn {
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0.55;
+}
+.copy-btn .ico { width: 1rem; height: 1rem; stroke: currentColor; stroke-width: 2; fill: none; }
+.copy-btn:hover, .copy-btn:focus-visible, tr:hover .copy-btn { opacity: 1; }
+.copy-btn:hover { border-color: var(--line-strong); color: var(--link); background: var(--soft); }
+.copy-btn.is-copied { opacity: 1; color: var(--success); border-color: var(--success); }
+.copy-scratch { position: fixed; top: 0; left: -9999px; opacity: 0; }
+
+/* Phones and small tablets: each row becomes a stacked label/value list. Never sideways scroll. */
+@media (max-width: 899.98px) {
+  .ledger thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .ledger, .ledger tbody, .ledger tr, .ledger td { display: block; }
+  .ledger tr { padding: 0.75rem 0; border-top: 1px solid var(--line); }
+  .ledger tbody tr:hover { background: transparent; }
+
+  .ledger td {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 0;
+    border: 0;
+    text-align: right;
+  }
+
+  .ledger td::before { content: attr(data-label); flex: none; max-width: 45%; color: var(--muted); text-align: left; }
+  .ledger td:first-child { display: block; font-size: 1.15rem; font-weight: 700; text-align: left; }
+  .ledger td:first-child::before, .ledger td[data-label=""]::before { display: none; }
+  .ledger td[data-label=""] { justify-content: flex-start; }
+}
+
+/* ---------- 9. Facts, figures, tabs, steps, pager ---------- */
+
+.facts > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.65rem 0; border-top: 1px solid var(--line); }
+.facts > div:first-child { border-top: 0; }
+.facts dt { color: var(--muted); }
+.facts dd { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+
+.figures-wrap { overflow: hidden; }
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+
+@media (min-width: 640px) {
+  .figures { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+}
+
+.figure {
+  padding: 1rem 1.25rem 1rem 0;
+  box-shadow: -1px 0 0 0 var(--line), 0 -1px 0 0 var(--line);
+  padding-left: 1.25rem;
+}
+
+.figure-label { color: var(--muted); }
+.figure-value { display: block; font-size: 1.5rem; white-space: nowrap; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.figure-note { color: var(--muted); font-size: 0.9rem; }
+
+/* Tabs wrap into an equal-width grid; they never scroll sideways. */
+.tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); border-bottom: 1px solid var(--line); }
+
+.tabs a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control);
+  padding: 0.4rem 0.75rem;
+  border-bottom: 4px solid transparent;
+  color: var(--ink);
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+
+.tabs a:hover { background: var(--soft); }
+.tabs a[aria-current="page"] { border-bottom-color: var(--yellow); box-shadow: inset 0 -1px 0 var(--link); color: var(--link); }
+
+.steps { display: grid; gap: 0; padding: 0; list-style: none; counter-reset: none; }
+
+.step {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.step-link { display: flex; gap: 1rem; align-items: flex-start; width: 100%; color: var(--ink); text-decoration: none; }
+.step-link:hover .step-title { text-decoration: underline; text-decoration-thickness: 2px; }
+
+.step-no {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.step-title { display: block; font-size: 1.15rem; font-weight: 700; line-height: 1.3; }
+.step-status { display: block; color: var(--muted); }
+.step-done .step-no { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.step-current .step-no { background: var(--yellow); border-color: var(--link); color: var(--on-yellow); }
+.step-current { box-shadow: inset 0.3rem 0 0 0 var(--yellow); padding-left: 1rem; }
+.step .dot { position: absolute; top: 1rem; right: 0; margin: 0; }
+
+@media (min-width: 900px) {
+  .steps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 var(--gap); }
+  .step { border-top: 4px solid var(--line); }
+  .step-current { border-top-color: var(--yellow); box-shadow: none; padding-left: 0; }
+  .step-done { border-top-color: var(--primary); }
+  .step-link { flex-direction: column; gap: 0.6rem; }
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.pager-info { color: var(--muted); }
+
+/* ---------- 10. Forms ---------- */
+
+.form { display: grid; gap: 1.1rem; max-width: 36rem; }
+.field { display: grid; gap: 0.35rem; }
+.field > label { font-weight: 700; }
+.field-check > label { display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; cursor: pointer; }
+.field-check .tick { flex: none; }
+.opt { margin-left: 0.4rem; color: var(--muted); font-size: 0.9rem; font-weight: 400; }
+.hint { color: var(--muted); font-size: 0.9rem; }
+
+input, select, textarea {
+  width: 100%;
+  min-height: var(--control);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+textarea { min-height: 6rem; resize: vertical; }
+input[type="number"] { font-variant-numeric: tabular-nums; }
+input[type="file"] { padding: 0.55rem 0.75rem; }
+input:disabled, select:disabled, textarea:disabled { opacity: 0.65; }
+
+.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; margin-top: 0.5rem; }
+
+/* In-page confirmation panel (app.js builds it; there is no window.confirm anywhere). */
+.confirm-panel {
+  max-width: min(30rem, calc(100vw - 2rem));
+  padding: 1.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.confirm-panel::backdrop { background: var(--scrim); }
+
+/* Review readings: a large scrollable window over the grid. No padding on the dialog itself, so a click on
+   the dim area (the dialog element) closes it while clicks inside the content never do. */
+.review-panel {
+  width: min(72rem, calc(100vw - 2rem));
+  max-width: none;
+  height: min(52rem, calc(100vh - 2rem));
+  max-height: none;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.6rem;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--pop-shadow);
+}
+.review-panel[open] { display: flex; flex-direction: column; }
+.review-panel::backdrop { background: var(--scrim); }
+.review-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1.25rem 1.5rem 1rem;
+               border-bottom: 1px solid var(--line); }
+.review-head h2 { margin: 0; }
+.review-unsaved { padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--warn-soft); }
+.review-unsaved h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+.review-unsaved .btn { margin-top: 0.75rem; }
+.review-unsaved-table tbody tr { cursor: pointer; }
+.review-problem { color: var(--danger); font-weight: 700; }
+.review-ok { color: var(--success); }
+.review-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 1rem 1.5rem 1.5rem; overscroll-behavior: contain; }
+.review-body .table-tools { position: sticky; top: -1rem; z-index: 1; padding-top: 1rem; margin-top: -1rem; background: var(--surface); }
+@media (max-width: 767.98px) {
+  .review-panel { width: 100vw; height: 100vh; border-radius: 0; }
+  .review-head, .review-unsaved, .review-body { padding-inline: 1rem; }
+}
+
+/* Small buttons inside table rows (Edit, View bill), so a row keeps its height. */
+.btn-small { min-height: 2.25rem; padding: 0.3rem 0.8rem; font-size: 0.9rem; white-space: nowrap; }
+.grid-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+a.grid-name { color: var(--ink); text-decoration: none; }
+a.grid-name:hover { color: var(--link); text-decoration: underline; }
+.confirm-text { font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem; }
+.confirm-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+/* ---------- 11. Public pages (sign in) ---------- */
+
+.public-wrap { max-width: 30rem; margin: 0 auto; padding: 1.5rem var(--gutter) 3rem; }
+.public-tools { display: flex; justify-content: flex-end; }
+.public-brand { display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0 1.5rem; padding-bottom: 1.25rem; border-bottom: 3px double var(--line-strong); }
+.public-brand .brand-mark { width: 4rem; height: 4rem; }
+.public-brand strong { display: block; font-family: var(--font-title); font-size: 1.75rem; line-height: 1.2; }
+.public-brand span { color: var(--muted); }
+.public-wrap h1 { font-family: var(--font-title); font-size: var(--title-size); line-height: 1.2; margin-bottom: 0.5rem; }
+.public-wrap .page-head { margin-bottom: 1.25rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* ---------- 12. Print: statements and route sheets ---------- */
+
+/* .doc is the base for formal documents. The statement layout itself is designed elsewhere; it
+   only needs this: margins, sans type, hairline rules, and page breaks between homeowners. */
+.doc { max-width: 210mm; margin: 0 auto; padding: 14mm 12mm; background: var(--surface); color: var(--ink); font-size: 0.9rem; line-height: 1.4; }
+.doc h1, .doc h2, .doc h3 { font-family: var(--font-sans); }
+.doc table { width: 100%; border-collapse: collapse; }
+.doc th, .doc td { padding: 0.25rem 0.4rem; border-bottom: 1px solid var(--line-strong); text-align: left; }
+.doc th.num, .doc td.num { text-align: right; }
+.doc-page + .doc-page { margin-top: 2rem; }
+
+@page { margin: 12mm; }
+
+@media print {
+  /* Triple :root outranks the dark-theme token blocks, so a dark-mode screen still prints black on white. */
+  :root:root:root {
+    --canvas: #FFFFFF;
+    --surface: #FFFFFF;
+    --soft: #FFFFFF;
+    --ink: #000000;
+    --muted: #000000;
+    --line: #000000;
+    --line-strong: #000000;
+    --link: #000000;
+  }
+
+  .skip, .side, .topbar, .tabbar, .sheet, .page-actions, .form-actions, .pager, .confirm-panel, .no-print, .flash, .dot, .btn,
+  .crumbs, .dd-layer, .copy-btn, .table-tools, .filters, .sort-ico { display: none !important; }
+
+  html { font-size: 11pt; }
+  .shell { display: block; }
+  main { max-width: none; padding: 0; }
+  a { text-decoration: none; }
+  .page-head { border-bottom: 1px solid var(--line); }
+  .ledger tbody tr:hover { background: transparent; }
+  .doc { max-width: none; margin: 0; padding: 0; }
+  .doc-page { break-after: page; }
+  /* A break after the last sheet makes Chrome's print dialog count one extra, empty sheet. */
+  .doc-page:last-of-type { break-after: auto; }
+  .doc-page + .doc-page { margin-top: 0; }
+}
+
+/* ======================================================================================
+   13. Track A screens: readings grid, bill review, cashier, statements, route sheets.
+   Owned by the cycle/payments/reports builder. Print rules for documents are at the end.
+   ====================================================================================== */
+
+/* Grid pages need the full width; .form is capped at 36rem for ordinary forms. */
+.wide > .form { max-width: none; }
+.grid-wrap { overflow-x: auto; }
+.grid-input { width: 6.5rem; min-width: 0; max-width: 8rem; text-align: right; font-variant-numeric: tabular-nums; }
+.grid-use { display: inline-block; min-width: 4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.grid-use.is-bad { color: var(--danger); }
+.grid-wrap .ledger td { overflow-wrap: normal; }
+/* Tighter cells: seven columns with inputs and actions must fit a 1366px laptop without scrolling. */
+@media (min-width: 900px) { .grid-wrap .ledger th, .grid-wrap .ledger td { padding-inline: 0.5rem; } }
+.grid-name { display: block; min-width: 9rem; font-weight: 700; }
+.grid-sub { display: block; color: var(--muted); font-size: 0.875rem; }
+.grid-link { display: block; margin-top: 0.25rem; font-size: 0.9rem; white-space: nowrap; }
+.grid-status { display: inline-flex; align-items: center; white-space: nowrap; }
+.tick { width: 1.6rem; height: 1.6rem; min-height: 0; accent-color: var(--primary); }
+.lead-dot { position: relative; display: inline-block; width: 1rem; height: 1rem; margin-bottom: 0.5rem; }
+.filters { max-width: none; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); align-items: end; margin-block: 1rem; }
+.filters .form-actions { margin-top: 0; }
+/* Every filter is optional; the tag only added a second line to some labels and pushed their inputs out of line. */
+.filters .opt { display: none; }
+.cashier-search input[type="search"] { min-height: 3.5rem; font-size: 1.25rem; }
+.doc-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; max-width: 210mm; margin: 1rem auto; padding: 0 12mm; }
+
+/* Formal documents: statement of account, route sheet, acknowledgement, notice letter. */
+.soa-draft { margin-bottom: 0.75rem; padding: 0.4rem 0.6rem; border: 2px solid var(--danger); color: var(--danger); font-weight: 700; text-align: center; }
+.soa-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; padding-bottom: 0.6rem; border-bottom: 2px solid var(--ink); }
+.soa-org { display: flex; align-items: center; gap: 0.75rem; }
+.soa-logo { width: 4.5rem; height: auto; }
+.soa-org-name { font-size: 1.15rem; font-weight: 700; line-height: 1.25; }
+.soa-org-line { color: var(--muted); }
+.soa-title h1 { margin-bottom: 0.25rem; font-size: 1.35rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.soa-meta { display: grid; gap: 0; }
+.soa-meta > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.15rem 0; border-bottom: 1px solid var(--line); }
+.soa-meta dt { color: var(--muted); }
+.soa-meta dd { margin: 0; font-weight: 700; text-align: right; }
+.soa-parties { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.5rem 1.5rem; margin: 0.75rem 0; }
+.soa-table { margin-top: 0.75rem; }
+/* A <p> above the table, not <caption>: inside a named print page (A4 landscape statements) Chrome
+   pushes every captioned table onto a new page. */
+.soa-cap { margin-top: 0.75rem; padding: 0.2rem 0; font-weight: 700; }
+.soa-cap + .soa-table { margin-top: 0; }
+.soa-table th { font-size: 0.85rem; color: var(--muted); }
+.soa-sub td { font-weight: 700; border-top: 1px solid var(--ink); }
+.soa-total { display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.9rem; padding: 0.5rem 0; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); font-size: 1.15rem; }
+.soa-total strong { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.soa-notes { margin-top: 0.75rem; font-size: 0.85rem; }
+.soa-notes p + p { margin-top: 0.3rem; }
+/* One A4 landscape sheet = the same statement twice (member's copy | HOA copy), cut down the middle. */
+.soa-sheet { display: grid; grid-template-columns: 1fr 1fr; max-width: 297mm; padding: 8mm; }
+.soa-copy { min-width: 0; padding: 0 6mm; font-size: 0.8rem; }
+.soa-copy + .soa-copy { border-left: 1px dashed var(--ink); }
+.soa-copy-label { margin-bottom: 0.3rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-align: right; text-transform: uppercase; }
+.soa-copy .soa-head { gap: 0.5rem; }
+.soa-copy .soa-logo { width: 3rem; }
+.soa-copy .soa-org-name { font-size: 0.95rem; }
+.soa-copy .soa-title h1 { font-size: 1rem; }
+.soa-copy .soa-parties { grid-template-columns: 1fr 1fr; gap: 0.25rem 1rem; margin: 0.4rem 0; }
+.soa-copy .soa-meta > div { gap: 0.4rem; padding: 0.05rem 0; }
+.soa-copy .soa-cap { margin-top: 0.35rem; padding: 0.1rem 0; }
+.soa-copy .doc th, .soa-copy th, .soa-copy td { padding: 0.1rem 0.25rem; }
+.soa-copy .soa-total { margin-top: 0.4rem; padding: 0.25rem 0; font-size: 0.95rem; }
+.soa-copy .soa-total strong { font-size: 1.1rem; }
+.soa-copy .soa-notes { margin-top: 0.4rem; font-size: 0.72rem; }
+@media (max-width: 899px) {
+  .soa-sheet { grid-template-columns: 1fr; }
+  .soa-copy + .soa-copy { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--ink); border-left: 0; }
+}
+.rs-table td { padding-top: 0.55rem; padding-bottom: 0.55rem; }
+.rs-blank { min-width: 7rem; border-left: 1px solid var(--line); }
+.rs-line { min-width: 12rem; border-bottom: 1px solid var(--ink); }
+.rs-foot { margin-top: 0.6rem; color: var(--muted); font-size: 0.85rem; }
+.ack { margin-top: 1rem; border: 1px solid var(--line); }
+/* Acknowledgement Receipt: our own layout, after the office's "RECEIPT" booklet (particulars box on the left,
+   "received from ... the sum of Pesos ..." on the right). One A4 landscape sheet = homeowner's copy | office copy,
+   cut down the middle. Sizes are in mm/pt so the screen preview and the paper match. */
+.rc-sheet { display: grid; grid-template-columns: 1fr 1fr; max-width: 297mm; margin: 0 auto; padding: 8mm 0; }
+/* Arial, not the app font: the app font draws zeros with a slash, which looked like a misprint on receipts. */
+.rc-copy { display: flex; flex-direction: column; gap: 4mm; min-width: 0; padding: 0 8mm; font-family: Arial, "Helvetica Neue", sans-serif;
+           font-size: 10pt; line-height: 1.3; }
+.rc-copy + .rc-copy { border-left: 1px dashed var(--ink); }
+.rc-copy-label { font-size: 8pt; font-weight: 700; letter-spacing: 0.08em; text-align: right; text-transform: uppercase; }
+.rc-org { display: flex; align-items: center; justify-content: center; gap: 3mm; text-align: center; }
+.rc-logo { width: 16mm; height: auto; }
+.rc-org-name { font-size: 10.5pt; font-weight: 700; line-height: 1.2; text-transform: uppercase; }
+.rc-org-unit { font-size: 13pt; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.rc-org-line { color: var(--muted); font-size: 8.5pt; }
+.rc-title { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 1mm 4mm; padding: 1.5mm 0;
+            border-block: 2px solid var(--ink); font-size: 11pt; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.rc-no { white-space: nowrap; }
+.rc-no strong { font-size: 14pt; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.rc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 5mm; align-items: start; }
+.rc-box { padding: 2mm 2.5mm; border: 1px solid var(--ink); }
+.rc-box-title { margin: 1mm 0; font-size: 8.5pt; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.rc-lines { width: 100%; border-collapse: collapse; }
+.rc-lines th, .rc-lines td { padding: 1mm 0.5mm; border-bottom: 1px solid var(--line-strong); text-align: left; vertical-align: top; overflow-wrap: break-word; }
+.rc-lines th { font-size: 8.5pt; }
+.rc-lines .num { width: 1%; padding-left: 2mm; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rc-lines tfoot th, .rc-lines tfoot td { border-top: 1px solid var(--ink); border-bottom: 0; font-weight: 700; }
+.rc-checks { display: grid; gap: 1mm; margin: 0; padding: 0; list-style: none; }
+.rc-checks li { display: flex; align-items: center; gap: 2mm; }
+.rc-tick { display: inline-grid; place-items: center; flex: none; width: 3.5mm; height: 3.5mm; border: 1px solid var(--ink); }
+/* Drawn, not a ✓ character: the office fonts have no check mark glyph. */
+.rc-tick.is-on::after { content: ""; width: 1mm; height: 2mm; margin-top: -0.4mm; border: solid var(--ink); border-width: 0 2px 2px 0;
+                        transform: rotate(45deg); }
+.rc-balance { display: flex; justify-content: space-between; gap: 2mm; margin-top: 2mm; padding-top: 1.5mm;
+              border-top: 1px solid var(--ink); font-weight: 700; }
+.rc-fill { display: grid; gap: 3mm; margin: 0; }
+.rc-fill > div { display: grid; gap: 0.5mm; }
+.rc-fill dt { color: var(--muted); font-size: 8.5pt; }
+.rc-fill dd { margin: 0; padding-bottom: 0.8mm; border-bottom: 1px solid var(--ink); font-weight: 700; overflow-wrap: anywhere; }
+.rc-sub { display: block; font-weight: 400; }
+.rc-figure { white-space: nowrap; }
+.rc-signature { display: grid; justify-items: center; width: min(100%, 60mm); margin: 10mm 0 0 auto; }
+.rc-sign-img { height: 12mm; max-width: 100%; object-fit: contain; }
+.rc-sign { display: grid; justify-items: center; width: 100%; padding-top: 1mm; border-top: 1px solid var(--ink); font-size: 8.5pt; }
+.rc-sign-name { font-size: 9.5pt; font-weight: 700; }
+@media screen and (max-width: 899.98px) {
+  .rc-sheet { grid-template-columns: 1fr; padding: 1rem 16px; }
+  .rc-copy { padding: 0; }
+  .rc-copy + .rc-copy { margin-top: 6mm; padding-top: 4mm; border-top: 1px dashed var(--ink); border-left: 0; }
+}
+@media screen and (max-width: 520px) { .rc-grid { grid-template-columns: 1fr; } }
+@media print {
+  /* A4 landscape minus the 7 mm page margins (print-landscape.css): each copy is exactly half the sheet wide. */
+  .rc-sheet { width: 283mm; max-width: none; padding: 0; break-inside: avoid; }
+  .rc-copy { gap: 5mm; font-size: 11pt; }
+  .rc-signature { margin-top: 14mm; }
+}
+
+/* Receipt details printed onto the office's pre-printed OR / AR. Positions (mm) and the page size come from the
+   generated /receipts/<form>/layout.css; this file only says how a detail looks. On screen the form's own lines
+   and labels are drawn in gray (.rp-g) so staff see where each detail lands; they never print, except on the
+   calibration test page (.rp-test). */
+.rp-sheet { padding: 1rem 16px 2rem; overflow-x: auto; }
+.rp-page { position: relative; margin: 0 auto; overflow: hidden; background: var(--paper); color: var(--paper-ink);
+           box-shadow: var(--pop-shadow); }
+.rp-content { position: absolute; inset: 0; transform-origin: 0 0; }
+.rp-f { position: absolute; overflow: hidden; font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: 700;
+        line-height: 1.2; white-space: nowrap; color: var(--paper-ink); }
+.rp-label { display: flex; align-items: center; font-size: 8pt; line-height: 1.05; white-space: normal; }
+.rp-sign-img { height: 12mm; object-fit: contain; object-position: center bottom; }
+.rp-g { position: absolute; color: var(--paper-guide); font-family: Arial, sans-serif; font-size: 7.5pt; line-height: 1.2; white-space: nowrap; }
+.rp-gline { height: 0; border-bottom: 1px solid var(--paper-rule); }
+.rp-grect { border: 1px solid var(--paper-rule); }
+.rp-gr { height: 0; border-top: 1px solid var(--paper-rule-soft); }
+.rp-void { max-width: 216mm; margin: 0 auto; padding: 0.5rem 16px; color: var(--danger); font-weight: 700; }
+.sign-preview img { max-width: min(100%, 20rem); max-height: 6rem; padding: 0.5rem; border: 1px solid var(--line); background: var(--paper); }
+
+@media print {
+  .rp-body { margin: 0; background: var(--paper); }
+  .rp-sheet { padding: 0; overflow: visible; }
+  .rp-page { margin: 0; box-shadow: none; break-after: page; }
+  .rp-g { display: none; }
+  .rp-test .rp-g { display: block; }
+}
+.ack-sign, .letter-sign, .letter-ack { margin-top: 1.5rem; }
+.letter p + p { margin-top: 0.6rem; }
+.letter-title { margin: 1rem 0 0.75rem; font-size: 1.3rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
+@media print {
+  .doc-toolbar { display: none !important; }
+  .letter { font-size: 9.5pt; }
+  /* Page size and orientation come from print-landscape.css, loaded only by the statement printout. */
+  .soa-sheet { display: flex; padding: 0; break-inside: avoid; }
+  .soa-copy { flex: 1 1 0; font-size: 7.5pt; }
+  .soa-copy + .soa-copy { margin-top: 0; padding-top: 0; border-top: 0; border-left: 1px dashed var(--ink); }
+  .rs-table thead { display: table-header-group; }
+  .rs-table tr { break-inside: avoid; }
+  .ack { border: 0; }
+}
+
+/* Wide printable tables (route sheets) on phones: the table scrolls inside itself so the page never
+   scrolls sideways (skill §12.2). Screen-only; print keeps the full-width paper layout. */
+@media screen and (max-width: 899.98px) {
+  .doc { padding: 1rem; }
+  .doc .rs-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+/* ---- Steady page changes ------------------------------------------------------------------------
+   Pages are full server loads (forms, Back and print stay simple and reliable).
+   - scrollbar-gutter: a long page showed a scrollbar and a short one did not, sliding everything ~15px.
+   - No cross-document view transitions: while their fade ran, the browser sent clicks to the page background,
+     so a button pressed right after a page change did nothing and had to be pressed again.
+   - html.is-loading (app.js) shows a thin moving bar from the moment a link or Save is pressed until the next page
+     arrives, so a slow answer (the online server waking up) never looks like a click that did nothing. */
+html { scrollbar-gutter: stable; }
+html.is-loading { cursor: progress; }
+html.is-loading::before {
+  content: ""; position: fixed; inset: 0 0 auto 0; z-index: 1000; height: 4px;
+  background: linear-gradient(90deg, transparent, var(--link), transparent) no-repeat; background-size: 40% 100%;
+  animation: loading-slide 1.1s linear infinite;
+}
+@keyframes loading-slide { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+
+/* ---- Live updates (app.js setupLive): what another computer saved slides into place. ---- */
+@keyframes live-row-in { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: none; } }
+@keyframes live-glow { from { background-color: var(--live-glow); } to { background-color: transparent; } }
+@keyframes live-out { to { opacity: 0; } }
+tr.live-new { animation: live-row-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+tr.live-new > td, tr.live-changed > td { animation: live-glow 2.4s ease-out both; }
+tr.live-gone { animation: live-out 300ms ease-in forwards; pointer-events: none; }
+.figures.live-changed .figure, dl.facts.live-changed, .empty.live-new, .table-wrap.live-new { animation: live-glow 2.4s ease-out; }
+.live-pill { position: fixed; right: 1rem; bottom: calc(var(--control) + 2rem); z-index: 900; padding: 0.7rem 1.1rem; border: 0;
+             border-radius: 999px; background: var(--primary); color: var(--on-primary); font: inherit; font-weight: 700;
+             box-shadow: var(--pop-shadow); cursor: pointer; animation: live-row-in 420ms ease-out both; }
+@media (min-width: 768px) { .live-pill { bottom: 1.5rem; } }
+@media print { .live-pill { display: none; } }
+
+/* ---- Editing by several people (editing.py): busy records and the conflict resolver ---- */
+.lock-banner { margin: 0 0 1rem; padding: 0.9rem 1rem; border-left: 4px solid var(--warn); border-radius: var(--radius);
+               background: var(--soft); }
+.locked-fields { margin: 0; padding: 0; border: 0; min-width: 0; opacity: 0.75; }
+.resolver td { vertical-align: top; }
+.resolver .pick { display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; }
+.resolver .pick input { width: 1.2rem; height: 1.2rem; margin-top: 0.15rem; accent-color: var(--primary); flex: none; }
+.resolver .pick span { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ---- Section pages: under the open sidebar item, and as a row of links on phones ---- */
+.nav-sub { display: grid; gap: 0.1rem; margin: 0.15rem 0 0.4rem 1.35rem; padding-left: 0.6rem; border-left: 2px solid var(--line); }
+.nav-sublink { display: flex; align-items: center; min-height: 2.5rem; padding: 0.3rem 0.75rem; border-radius: var(--radius);
+               color: var(--ink); font-weight: 600; text-decoration: none; }
+.nav-sublink:hover { background: var(--soft); }
+.nav-sublink[aria-current="page"] { background: var(--soft); color: var(--link); font-weight: 700; box-shadow: inset 3px 0 0 var(--link); }
+.subnav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+.subnav-link { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0.35rem 0.9rem; border: 1px solid var(--line-strong);
+               border-radius: 999px; color: var(--ink); font-weight: 600; text-decoration: none; }
+.subnav-link[aria-current="page"] { background: var(--yellow); border-color: var(--yellow); color: var(--on-yellow); }
+@media (min-width: 768px) { .subnav { display: none; } }
+@media print { .subnav, html.is-loading::before { display: none; } }
+
+/* Desktop tables: never split a word or a number to squeeze a column ("Residentia|l", "₱1,050.0|0").
+   `overflow-wrap: anywhere` stays for the stacked phone layout, where long addresses must wrap. */
+@media (min-width: 900px) {
+  .ledger td { overflow-wrap: break-word; }
+  .ledger td.num, .ledger td:first-child { white-space: nowrap; }
+  .ledger td.wrap { white-space: normal; }
+}
+
+/* Small laptops: tighter columns so most tables fit without their own sideways scroll. */
+@media (min-width: 900px) and (max-width: 1279.98px) {
+  .ledger th, .ledger td { padding-inline: 0.5rem; }
+}
+td.nowrap, th.nowrap, .copy-text.nowrap { white-space: nowrap; }
+
+/* ---------- 14. Breadcrumbs, wide tables, themed drop-down ---------- */
+
+/* Nested pages: the trail sits above the h1 inside the title block, so the title block itself starts
+   at the same place on every page. Phones get one "‹ Back to …" link instead of the trail. */
+.crumbs { margin-bottom: 0.4rem; }
+.crumbs-trail { display: flex; flex-wrap: wrap; align-items: baseline; padding: 0; list-style: none; color: var(--muted); }
+.crumbs-trail li { overflow-wrap: anywhere; }
+.crumbs-trail li + li::before { content: "›" / ""; margin-inline: 0.5rem; color: var(--muted); }
+.crumbs-trail a { font-weight: 700; }
+.crumbs-back { display: none; }
+/* Print documents (statements, route sheets, notices): the trail gets its own line above the Print button. */
+.doc-toolbar .crumbs { flex-basis: 100%; margin-bottom: 0; }
+
+@media (max-width: 767.98px) {
+  .crumbs-trail { display: none; }
+  .crumbs-back { display: inline-flex; align-items: center; gap: 0.4rem; min-height: var(--control); font-weight: 700; text-decoration: none; }
+  .crumbs-back:hover { text-decoration: underline; }
+}
+
+/* Desktop and tablet: a table wider than the page scrolls inside its own wrapper; the page never
+   scrolls sideways. Phones (<900px) use the stacked layout above and never scroll. */
+@media (min-width: 900px) {
+  .table-wrap { overflow-x: auto; }
+}
+/* Inside a grid or flex form the wrapper would otherwise grow to the table's widest row and push the page sideways. */
+.table-wrap { min-width: 0; max-width: 100%; }
+
+/* A select inside a table cell (column header names it): as wide as its longest option. */
+select.select-compact { width: auto; max-width: 100%; }
+
+/* Themed drop-down (select.js). The native select stays in the form, visually hidden but still
+   1px in size so it keeps working for form submission, validation and test tools. */
+.dd-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+  clip-path: inset(50%);
+}
+
+.dd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: var(--control);
+  padding: 0.5rem 0.85rem 0.5rem 0.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dd:hover, .dd[aria-expanded="true"] { border-color: var(--link); }
+.dd[aria-expanded="true"] { box-shadow: inset 0 0 0 1px var(--link); }
+.dd[aria-invalid="true"] { border-color: var(--danger); box-shadow: inset 0 0 0 1px var(--danger); }
+.dd:disabled { opacity: 0.65; cursor: not-allowed; }
+
+/* Every option is stacked invisibly in the same cell as the shown value, so the button is as wide
+   as the longest option and never changes width when the choice changes. */
+.dd-face { display: grid; min-width: 0; }
+.dd-value, .dd-sizer { grid-area: 1 / 1; }
+/* No overflow:hidden on the sizers: a grid item that clips has zero min-content width, so a squeezed table column
+   shrank the button back to the current value. */
+.dd-sizer { height: 0; visibility: hidden; }
+
+.dd-chevron {
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-top: -0.3rem;
+  border-right: 2px solid var(--link);
+  border-bottom: 2px solid var(--link);
+  transform: rotate(45deg);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dd[aria-expanded="true"] .dd-chevron { margin-top: 0.3rem; transform: rotate(225deg); }
+
+.dd-compact { display: inline-flex; width: auto; }
+.dd-compact .dd-value, .dd-compact .dd-sizer { white-space: nowrap; }
+
+/* The list lives in a body-level layer with fixed positioning; select.js sets the custom properties
+   from the button's position, and flips the list above the button near the bottom of the screen. */
+.dd-list {
+  --dd-top: 0;
+  --dd-left: 0;
+  --dd-min: 10rem;
+  --dd-max: 22rem;
+  position: fixed;
+  top: var(--dd-top);
+  left: var(--dd-left);
+  z-index: 60;
+  width: max-content;
+  min-width: var(--dd-min);
+  max-width: calc(100vw - 1rem);
+  max-height: var(--dd-max);
+  margin: 0;
+  padding: 0.3rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 0.6rem;
+  box-shadow: var(--pop-shadow);
+  animation: dd-in 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dd-list.is-up { animation-name: dd-in-up; }
+
+@keyframes dd-in { from { opacity: 0; transform: translateY(-0.35rem); } }
+@keyframes dd-in-up { from { opacity: 0; transform: translateY(0.35rem); } }
+
+.dd-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.45rem 2.5rem 0.45rem 0.85rem;
+  border-radius: var(--radius);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.dd-option.is-active { background: var(--soft); box-shadow: inset 0.2rem 0 0 var(--link); }
+.dd-option[aria-selected="true"] { font-weight: 700; }
+
+.dd-option[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  width: 0.4rem;
+  height: 0.8rem;
+  border-right: 2px solid var(--link);
+  border-bottom: 2px solid var(--link);
+  transform: translateY(-60%) rotate(45deg);
+}
+
+.dd-option[aria-disabled="true"] { color: var(--muted); cursor: not-allowed; }
+
+/* Filterable list (data-search or a long list): a filter box above the options, which scroll on their own. */
+.dd-pop { display: flex; flex-direction: column; gap: 0.3rem; overflow: hidden; }
+.dd-search { flex: none; min-height: 2.5rem; width: 100%; }
+.dd-options { position: relative; flex: 1 1 auto; min-height: 0; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.dd-options .dd-option[hidden] { display: none; }
+.dd-none { margin: 0; padding: 0.6rem 0.85rem; color: var(--muted); }
+
+/* Themed calendar (datepicker.js). The button reuses the drop-down look; the calendar is a fixed popup
+   in the body-level layer, positioned by custom properties like the drop-down list. */
+/* A date needs about 16rem; stretching it across a whole form row looked like a text box. In a filter bar it fills its cell so the bar lines up. */
+.dp { gap: 0.5rem; width: min(100%, 16rem); }
+.filters .dp { width: 100%; }
+.dp-value { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dp.is-empty .dp-value { color: var(--muted); }
+.dp-ico { flex: none; width: 1.2rem; height: 1.2rem; stroke: var(--link); stroke-width: 2; fill: none; }
+
+.dp-pop {
+  --dp-top: 0;
+  --dp-left: 0;
+  position: fixed;
+  top: var(--dp-top);
+  left: var(--dp-left);
+  z-index: 60;
+  width: 19.5rem;
+  max-width: calc(100vw - 1rem);
+  padding: 0.75rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 0.6rem;
+  box-shadow: var(--pop-shadow);
+  animation: dd-in 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dp-pop.is-up { animation-name: dd-in-up; }
+
+.dp-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
+.dp-title { flex: 1; min-height: 2.5rem; padding: 0 0.5rem; border: 0; border-radius: var(--radius); background: none;
+            color: var(--ink); font: inherit; font-weight: 700; text-align: center; }
+button.dp-title { cursor: pointer; }
+button.dp-title:hover { background: var(--soft); color: var(--link); }
+span.dp-title { display: flex; align-items: center; justify-content: center; }
+.dp-nav { flex: none; width: 2.5rem; height: 2.5rem; border: 1px solid var(--line); border-radius: var(--radius);
+          background: var(--surface); color: var(--link); font: inherit; font-size: 1.35rem; line-height: 1; cursor: pointer; }
+.dp-nav:hover { border-color: var(--link); background: var(--soft); }
+
+.dp-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.dp-grid th { padding: 0 0 0.35rem; color: var(--muted); font-size: 0.8rem; font-weight: 700; text-align: center; }
+.dp-grid td { padding: 0.1rem; text-align: center; }
+.dp-day, .dp-month {
+  width: 100%;
+  min-height: 2.4rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.dp-day:hover, .dp-month:hover { background: var(--soft); border-color: var(--line-strong); }
+.dp-day.is-outside { color: var(--muted); }
+.dp-day.is-in-range { background: var(--soft); border-radius: 0; }
+.dp-day.is-partner { border-color: var(--link); }
+.dp-day.is-today, .dp-month.is-today { border-color: var(--line-strong); font-weight: 700; }
+.dp-day[aria-pressed="true"], .dp-month[aria-pressed="true"] { background: var(--link); border-color: var(--link); color: var(--surface); font-weight: 700; }
+.dp-day:disabled, .dp-month:disabled { opacity: 0.35; cursor: not-allowed; background: none; border-color: transparent; }
+.dp-months { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem; }
+.dp-month { min-height: 2.75rem; }
+.dp-foot { display: flex; justify-content: space-between; gap: 0.5rem; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--line); }
+.dp-foot .btn { min-height: 2.5rem; }

@@ -1,0 +1,12 @@
+# Records and their copies stay on this computer only: never in git.
+app/data/
+backups/
+*.sqlite3
+*.sqlite3-*
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+.env*
+__pycache__/
+*.pyc

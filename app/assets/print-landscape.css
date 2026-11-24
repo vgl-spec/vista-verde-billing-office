@@ -1,0 +1,5 @@
+/* Loaded only by the statement and Acknowledgement Receipt printouts. Chrome takes the paper size and orientation for the print
+   dialog from the document's own @page rule; a rule attached to a named page (page: soa-sheet) laid the
+   sheet out landscape but left the dialog on the printer's default paper (Legal on the office Epson).
+   Route sheets and letters do not load this file, so they stay A4 portrait. */
+@page { size: A4 landscape; margin: 7mm; }
