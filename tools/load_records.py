@@ -66,7 +66,7 @@ def load(records, target):
             part = Path(f'{target}{suffix}')
             if part.exists():
                 part.rename(backups / f'{target.stem}-empty-before-load-{stamp}.sqlite3{suffix}')
-    reader = sqlite3.connect(f'file:{records.as_posix()}?mode=ro', uri=True)
+    reader = sqlite3.connect(_source_uri(records), uri=True)
     writer = sqlite3.connect(target)
     try:
         reader.backup(writer)
@@ -97,11 +97,21 @@ def _server_running():
         return probe.connect_ex(('127.0.0.1', port)) == 0
 
 
+def _source_uri(records):
+    # immutable: read without locks or "-wal"/"-shm" side files (a WAL-mode file opened read-only otherwise writes
+    # them next to itself, on the USB drive). Safe because nothing writes the records file while it is loaded.
+    return f'file:{records.as_posix()}?mode=ro&immutable=1'
+
+
 def _read_records_file(records):
     if not records.is_file():
         raise Refused(f'there is no file at {records}.')
+    partner = Path(f'{records}-wal')
+    if partner.exists() and partner.stat().st_size:
+        # Part of the records may still sit in that partner file; loading the main file alone could lose them.
+        raise Refused(f'the records file is incomplete ({partner.name} is next to it). Ask the developer for a closed copy.')
     try:
-        connection = sqlite3.connect(f'file:{records.as_posix()}?mode=ro', uri=True)
+        connection = sqlite3.connect(_source_uri(records), uri=True)
         try:
             if connection.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
                 raise Refused('the records file is damaged. Ask the developer for a new copy.')
