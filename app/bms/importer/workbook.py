@@ -15,6 +15,7 @@ from .. import UserError
 MRPH_SHEET = 'MRPH 1D'
 SOA_SHEETS = ('PH1D', 'PH1DCONT', '1D SOUTH SOA')
 PHASE_CODE = '1D'
+MAX_SHEETS_LISTED = 12  # sheet names shown when a workbook's layout is unknown
 MRPH_FIRST_ROW = 9
 MRPH_MAX_ROW = 2000
 SOA_MAX_ROW = 12000
@@ -91,7 +92,12 @@ def parse(data, dues_cents):
     try:
         names = {name.strip().upper(): name for name in formulas.sheetnames}
         if MRPH_SHEET not in names:
-            raise UserError(f'The workbook has no "{MRPH_SHEET}" sheet (the meter reading sheet).')
+            # Another phase's workbook, or a changed layout: say what was found and import nothing, never guess.
+            found = ', '.join(f'"{name}"' for name in formulas.sheetnames[:MAX_SHEETS_LISTED])
+            more = ' and more' if len(formulas.sheetnames) > MAX_SHEETS_LISTED else ''
+            raise UserError(f'Nothing was imported. This workbook is not in a layout the system knows yet: it has no '
+                            f'"{MRPH_SHEET}" sheet (the Phase 1D meter reading sheet). Sheets in this file: {found}{more}. '
+                            'Give this file to the developer (on a USB drive, not by email) so its layout can be added.')
         mrph_name = names[MRPH_SHEET]
         mrph = _grid(values[mrph_name], MRPH_MAX_ROW, 12)
         period = _find_period(mrph[:HEADER_ROWS])
