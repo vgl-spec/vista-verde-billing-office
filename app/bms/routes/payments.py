@@ -4,11 +4,12 @@ import math
 from datetime import date
 from urllib.parse import urlencode
 
-from .. import UserError, audit, billing, db, ledger, receipts, statements, ui
+from .. import UserError, audit, billing, cash_drawer, db, ledger, receipts, statements, ui
 from ..http import DATE_PATTERN, NotFound, Redirect, Response, route
 from ..money import format_pesos
 from ..receipts import allocate  # noqa: F401 - part of this module's API (tests, reports)
 from .accounts import load_phases, office_notes, phase_field, search_clause
+from . import drawer
 from .signatures import signature_url
 
 CASHIER_ROLES = ('admin', 'staff', 'cashier')
@@ -52,8 +53,15 @@ def cashier(req):
             account = c.one('SELECT * FROM accounts WHERE id = ?', (account_id,))
             if account is None:
                 raise NotFound('That homeowner was not found.')
-            return req.page('Cashier', _account_card(req, c, account, tab), active='payments',
+            _, banner = drawer.cashier_banner(c)
+            return req.page('Cashier', ui.join([banner, _account_card(req, c, account, tab)]), active='payments',
                             live=('ledger_entries', 'payments', 'bills', 'accounts'))
+        state, banner = drawer.cashier_banner(c)
+        if state == drawer.NOT_OPENED and not search:
+            # The day starts here (office, 2026-11-25): confirm the date, count the opening cash, then take payments.
+            start = ui.join([ui.heading('Cashier', 'Start the day first: confirm the date and count the opening cash.'),
+                             drawer.start_card_for_cashier(c)])
+            return req.page('Cashier', start, active='payments')
         results = []
         if search:
             where, params = search_clause(search)
@@ -70,7 +78,7 @@ def cashier(req):
     rows = [[ui.copyable(r['account_no']),
              ui.copyable(r['name'], ui.raw(f'<a href="/payments/cashier?account={ui.esc(r["id"])}">{ui.esc(r["name"])}</a>')), r['address'],
              ui.money(r['balance_cents']), ui.button_link(f'/payments/cashier?account={r["id"]}', 'Take payment')] for r in results]
-    parts = [ui.heading('Cashier', 'Find the homeowner, then record the payment and the receipt you gave.'), search_form]
+    parts = [ui.heading('Cashier', 'Find the homeowner, then record the payment and the receipt you gave.'), banner, search_form]
     if search:
         parts.append(ui.table(['Account', 'Name', 'Address', 'Balance', ''], rows, empty='Nobody matches that search. Check the spelling.',
                               numeric_cols=(3,), keys=[r['id'] for r in results]))
@@ -234,6 +242,8 @@ def record_payment(req, c):
         misc_details = req.text('misc_details', 'What the miscellaneous payment is for', limit=MAX_MISC_DETAILS)
     if purpose != 'dues' and amount_cents <= 0:
         raise UserError('The amount paid must be more than zero.')
+    if method == 'cash':
+        cash_drawer.check_cash_payment(c, paid_on)
 
     existing = c.scalar('SELECT id FROM payments WHERE receipt_type = ? AND receipt_no = ?', (receipt_type, receipt_no))
     if existing:

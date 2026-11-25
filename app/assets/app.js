@@ -283,6 +283,36 @@
     });
   }
 
+  // Cash drawer count: each line's amount and the total as the cashier types. A guide only: the server counts again
+  // on save and shows the confirmed total on the review page.
+  function setupCashCount() {
+    const piecesPattern = /^\d{1,5}$/;
+    const pesosPattern = /^(\d+|\d{1,3}(,\d{3})+)(\.\d{1,2})?$/;
+    const peso = (cents) => '₱' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.addEventListener('input', (event) => {
+      const input = event.target;
+      if (!(input instanceof HTMLInputElement) || !input.form || !input.form.hasAttribute('data-cash-count')) return;
+      let total = 0;
+      let valid = true;
+      input.form.querySelectorAll('input[data-cash-pieces]').forEach((box) => {
+        const text = box.value.trim().replace(/,/g, '');
+        const pieces = text === '' ? 0 : piecesPattern.test(text) ? parseInt(text, 10) : NaN;
+        const cents = pieces * parseInt(box.dataset.cashPieces, 10);
+        const row = box.closest('tr');
+        const line = row ? row.querySelector('[data-cash-line]') : null;
+        if (line) line.textContent = Number.isNaN(cents) ? 'Check this number' : peso(cents);
+        if (Number.isNaN(cents)) valid = false; else total += cents;
+      });
+      input.form.querySelectorAll('input[data-cash-coins]').forEach((box) => {
+        const text = box.value.trim().replace(/^₱\s*/, '');
+        if (text === '') return;
+        if (pesosPattern.test(text)) total += Math.round(parseFloat(text.replace(/,/g, '')) * 100); else valid = false;
+      });
+      const output = input.form.querySelector('[data-cash-total]');
+      if (output) output.textContent = valid ? peso(total) : 'Check the boxes marked above';
+    });
+  }
+
   /* ---- Tables: sort and search unpaged tables in the page; copy buttons on key values. ----
      Paged tables are sorted by the server (their headers are links), because sorting one page here
      would hide rows that sit on the other pages. */
@@ -928,6 +958,7 @@
       button.addEventListener('click', () => window.print());
     });
     setupLiveConsumption();
+    setupCashCount();
     document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
       button.addEventListener('click', toggleTheme);
     });

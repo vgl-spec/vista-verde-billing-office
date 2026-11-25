@@ -764,6 +764,19 @@ html.sheet-open { overflow: hidden; }
 .figure-label { color: var(--muted); }
 .figure-value { display: block; font-size: 1.5rem; white-space: nowrap; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; }
 .figure-note { color: var(--muted); font-size: 0.9rem; }
+.figure-ico .ico { width: 1.15em; height: 1.15em; margin-right: 0.35rem; vertical-align: -0.2em; }
+/* Cash drawer: the opening reads green, the ending red (icon, label and amount), with a coloured bar on the left. */
+.figure-opening { box-shadow: inset 4px 0 0 0 var(--success), 0 -1px 0 0 var(--line); }
+.figure-closing { box-shadow: inset 4px 0 0 0 var(--danger), 0 -1px 0 0 var(--line); }
+.figure-opening .figure-label, .figure-opening .figure-value, .figure-good .figure-value { color: var(--success); }
+.figure-closing .figure-label, .figure-closing .figure-value, .figure-bad .figure-value { color: var(--danger); }
+.figure-warn .figure-value { color: var(--warn); }
+
+/* Cash count grid: pieces typed per note/coin, the line amount and the total update as the cashier types. */
+.cash-count td { vertical-align: middle; }
+.cash-count .grid-input { width: 7rem; }
+.cash-total { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.drawer-date { font-size: 1.6rem; font-weight: 700; margin: 0.25rem 0 1rem; }
 
 /* Tabs wrap into an equal-width grid; they never scroll sideways. */
 .tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); border-bottom: 1px solid var(--line); }

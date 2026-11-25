@@ -31,6 +31,7 @@ PRIMARY_KEY = {'settings': 'key'}  # every other table uses `id`
 STATE_ORDER = {
     ('bills', 'status'): ('draft', 'issued', 'cancelled'),
     ('payments', 'status'): ('posted', 'voided'),
+    ('cash_drawer_closings', 'status'): ('posted', 'voided'),  # local only; registered so voids use c.transition
 }
 RESERVED_COLUMNS = frozenset({'origin', 'field_hlc', 'version'})
 # Rows people edit through forms. `version` goes up by one on every change (editing.py: conflicts and merges).

@@ -98,6 +98,8 @@ _ICON_PATHS = {
     "sort": "M8 10l4-4 4 4M8 14l4 4 4-4",
     "sort-asc": "M8 14l4-4 4 4",
     "sort-desc": "M8 10l4 4 4-4",
+    "lock-open": "M6 11h12v10H6zM8 11V7a4 4 0 0 1 7.6-1.8",
+    "lock": "M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4",
 }
 
 
@@ -126,6 +128,7 @@ _NAV = (
         ("/cycle/penalties", "Penalties", OFFICE))),
     ("payments", "/payments/cashier", "Cashier", EVERYONE, True, (
         ("/payments/cashier", "Take a payment", EVERYONE), ("/payments", "Payments", EVERYONE),
+        ("/cash-drawer", "Cash drawer", EVERYONE), ("/cash-drawer/days", "Drawer days", ADMIN_ONLY),
         ("/account/signature", "My signature", EVERYONE), ("/payments/audit", "Audit trail", ADMIN_ONLY))),
     ("reports", "/reports", "Reports", OFFICE, False, (
         ("/reports", "All reports", OFFICE), ("/reports/collections", "Collections", OFFICE),
@@ -233,14 +236,27 @@ def facts(pairs: Iterable[Sequence]) -> Safe:
     return Safe(f'<dl class="facts">{rows}</dl>')
 
 
+# Figure tones: (css modifier, icon). The cash drawer's opening is green with an open lock and its ending red with a
+# closed one, so the two read apart at a glance; the next day the red ending comes back as the green opening.
+_FIGURE_TONES = {
+    "": ("", ""), "opening": ("figure-opening", "lock-open"), "closing": ("figure-closing", "lock"),
+    "good": ("figure-good", ""), "bad": ("figure-bad", ""), "warn": ("figure-warn", ""),
+}
+
+
 def figures(items: Iterable[Sequence]) -> Safe:
-    """Row of headline numbers. Each item is (label, value) or (label, value, note)."""
+    """Row of headline numbers. Each item is (label, value), (label, value, note) or (label, value, note, tone);
+    tone is one of _FIGURE_TONES and never carries the meaning alone (the label says it too)."""
     cells = []
     for item in items:
         label, value, *rest = item
         note = f'<span class="figure-note">{_text(rest[0])}</span>' if rest and rest[0] else ""
+        tone = _one_of(rest[1] if len(rest) > 1 else "", _FIGURE_TONES, "figure tone")
+        css, icon = _FIGURE_TONES[tone]
+        classes = f"figure {css}" if css else "figure"
+        icon_html = f'<span class="figure-ico">{_icon(icon)}</span>' if icon else ""
         cells.append(
-            f'<div class="figure"><span class="figure-label">{_text(label)}</span>'
+            f'<div class="{classes}"><span class="figure-label">{icon_html}{_text(label)}</span>'
             f'<strong class="figure-value">{_text(value)}</strong>{note}</div>'
         )
     return Safe(f'<div class="figures-wrap"><div class="figures">{"".join(cells)}</div></div>')
@@ -462,6 +478,7 @@ def table(
     sort: Sort | None = None,
     foot: Sequence | None = None,
     keys: Sequence | None = None,
+    fixed_order: bool = False,
 ) -> Safe:
     """Ledger table; on phones each row becomes a stacked label/value list.
 
@@ -475,6 +492,7 @@ def table(
     because sorting one page in the browser would hide rows on the other pages. Every other table is
     sorted (and, from CLIENT_SEARCH_MIN_ROWS rows, searched) in the browser by app.js.
     `foot` is a totals row that stays below the rows whatever the order.
+    `fixed_order` turns the browser sort and search off, for tables whose row order is the meaning (a form grid).
     """
     if not rows:
         return Safe(_empty_markup(empty))
@@ -513,7 +531,7 @@ def table(
     body = "".join(f'<tr role="row"{key} data-v="{_version(markup)}">{markup}</tr>' for markup, key in zip(row_cells, row_keys))
     foot_html = f'<tfoot><tr role="row">{cells(foot)}</tr></tfoot>' if foot else ""
     behaviour = ""
-    if sort is None and len(rows) > 1:
+    if sort is None and not fixed_order and len(rows) > 1:
         behaviour = " data-sortable" + (" data-searchable" if len(rows) >= CLIENT_SEARCH_MIN_ROWS else "")
     # The wrapper scrolls a wide table inside itself on desktop so the page never scrolls sideways.
     return Safe(
@@ -661,17 +679,19 @@ def form(
     danger: bool = False,
     confirm: str = "",
     multipart: bool = False,
+    attrs: str = "",
 ) -> Safe:
     """POST form with a CSRF token and a fresh idempotency `key` (one per render, so retries replay).
 
     `confirm` asks in-page before submitting (the submit button label becomes the confirm label).
     `secondary` is trusted markup shown beside the submit button, e.g. a Cancel link.
+    `attrs` is trusted markup added to the <form> tag, e.g. a data- hook for app.js.
     """
     enctype = ' enctype="multipart/form-data"' if multipart else ""
     kind = "danger" if danger else "primary"
     confirm_attr = f' data-confirm="{_text(confirm)}"' if confirm else ""
     return Safe(
-        f'<form class="form" method="post" action="{_href(action)}"{enctype}>'
+        f'<form class="form" method="post" action="{_href(action)}"{enctype}{" " + attrs if attrs else ""}>'
         f'<input type="hidden" name="csrf" value="{_text(csrf)}">'
         f'<input type="hidden" name="key" value="{uuid.uuid4()}">'
         f"{body}"
