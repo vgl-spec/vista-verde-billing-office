@@ -313,6 +313,28 @@
     });
   }
 
+  // Ticking clock showing the SERVER's time in Manila (UTC+8, no daylight saving), never the laptop's: the server
+  // stamps every payment, so its clock is the one staff must check. The laptop only measures time passing since load.
+  function setupLiveClock() {
+    const clock = document.querySelector('[data-server-now]');
+    const serverMs = clock ? Date.parse(clock.dataset.serverNow) : NaN;
+    if (Number.isNaN(serverMs)) return;
+    const offsetMs = serverMs - Date.now();
+    const manilaDay = (moment) => moment.toISOString().slice(0, 10);
+    const startDay = manilaDay(new Date(serverMs + 8 * 3600000));
+    const tick = () => {
+      // Shifting by 8 hours and reading the UTC fields gives Manila time whatever zone the laptop is set to.
+      const manila = new Date(Date.now() + offsetMs + 8 * 3600000);
+      // The date printed above the clock came from the server; after midnight it is stale, so fetch the new day.
+      if (manilaDay(manila) !== startDay) { window.location.reload(); return; }
+      const hours = manila.getUTCHours();
+      const pad = (value) => String(value).padStart(2, '0');
+      clock.textContent = `${hours % 12 || 12}:${pad(manila.getUTCMinutes())}:${pad(manila.getUTCSeconds())} ${hours < 12 ? 'AM' : 'PM'}`;
+    };
+    tick();
+    window.setInterval(tick, 1000);
+  }
+
   /* ---- Tables: sort and search unpaged tables in the page; copy buttons on key values. ----
      Paged tables are sorted by the server (their headers are links), because sorting one page here
      would hide rows that sit on the other pages. */
@@ -342,7 +364,7 @@
   const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
   const NUMBER = /^-?\d+(\.\d+)?%?$/;
   const ISO_DATE = /^\d{4}-\d{2}(-\d{2})?([ T]\d{2}:\d{2})?$/;
-  const WORD_DATE = /^[A-Z][a-z]{2,8}\.?( \d{1,2},)? \d{4}$/; // "Nov 2026", "November 11, 2026"
+  const WORD_DATE = /^[A-Z][a-z]{2,8}\.?( \d{1,2},)? \d{4}( \d{1,2}:\d{2} [AP]M)?$/; // "Nov 2026", "November 11, 2026 2:06 PM"
 
   const cellText = (cell) => (cell ? cell.textContent.replace(/\s+/g, ' ').trim() : '');
   const isBlank = (text) => text === '' || text === '—';
@@ -959,6 +981,7 @@
     });
     setupLiveConsumption();
     setupCashCount();
+    setupLiveClock();
     document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
       button.addEventListener('click', toggleTheme);
     });

@@ -20,7 +20,7 @@ import threading
 import time
 import uuid
 from contextlib import contextmanager
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 SYNCED_TABLES = frozenset({
     'phases', 'accounts', 'meters', 'settings', 'rate_plans', 'readings', 'bills',
@@ -41,6 +41,9 @@ HLC_PATTERN = re.compile(r'(\d{13})-(\d{4})-(.+)', re.DOTALL)
 HLC_COUNTER_LIMIT = 9999
 MAX_REMOTE_DRIFT_MS = 24 * 3600 * 1000  # a remote clock further ahead than this would poison ours
 BUSY_TIMEOUT_MS = 15000
+# The office is in the Philippines: UTC+8 all year (no daylight saving). Timestamps are STORED in UTC (db.now); dates
+# and times shown to people, and "today", are the office's.
+OFFICE_TZ = timezone(timedelta(hours=8), 'PHT')
 
 _config = None
 _config_lock = threading.Lock()
@@ -66,8 +69,54 @@ def now():
 
 
 def today():
-    """Local calendar date (the office is not in UTC) as YYYY-MM-DD."""
-    return date.today().isoformat()
+    """The office's calendar date as YYYY-MM-DD, whatever time zone the server runs in (the online copy runs in UTC,
+    where from midnight to 8 am Manila it would still be yesterday)."""
+    return datetime.now(OFFICE_TZ).date().isoformat()
+
+
+def office_time(timestamp):
+    """A stored UTC timestamp (db.now) as the office's local datetime, or None when there is none."""
+    if not timestamp:
+        return None
+    moment = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(OFFICE_TZ)
+
+
+# Staff read "November 25, 2026 2:06 PM", not "2026-11-25 14:06". Built by hand because strftime's no-padding
+# flags (%-d, %-I) do not exist on Windows, where the office server runs.
+def spoken_date(moment):
+    """A date or datetime as 'November 5, 2026'. The one place the app's date wording is decided."""
+    return f"{moment:%B} {moment.day}, {moment.year}"
+
+
+def _spoken_clock(moment):
+    return f"{moment.hour % 12 or 12}:{moment:%M %p}"
+
+
+def office_minute(timestamp):
+    """'2026-11-25T05:57:03.1Z' -> 'November 25, 2026 1:57 PM' (office time); '' when there is none."""
+    moment = office_time(timestamp)
+    return f"{spoken_date(moment)} {_spoken_clock(moment)}" if moment else ''
+
+
+def office_clock(timestamp):
+    """Only the office time of day, '1:57 PM', for places where the date is already on screen; '' when none."""
+    moment = office_time(timestamp)
+    return _spoken_clock(moment) if moment else ''
+
+
+def office_day(timestamp):
+    """The office's calendar date of a stored UTC timestamp, 'November 25, 2026'; '' when there is none."""
+    moment = office_time(timestamp)
+    return spoken_date(moment) if moment else ''
+
+
+def office_day_start(iso_day):
+    """The stored-timestamp form (UTC) of midnight at the office on that date, for filtering timestamps by day."""
+    midnight = datetime.combine(date.fromisoformat(iso_day), datetime.min.time(), OFFICE_TZ)
+    return midnight.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
 
 def connect():

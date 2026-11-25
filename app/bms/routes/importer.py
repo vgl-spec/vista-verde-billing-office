@@ -45,7 +45,7 @@ def _upload_page(req, problem='', status=200):
     """The upload form; a refused file comes back here with the reason on top so they can pick again."""
     with db.connect() as c:
         recent = c.all('SELECT id, filename, period, status, uploaded_at FROM import_batches ORDER BY uploaded_at DESC LIMIT 20')
-    rows = [[_link(f"/import/{b['id']}", b['filename']), _month(b['period']), b['uploaded_at'][:10],
+    rows = [[_link(f"/import/{b['id']}", b['filename']), _month(b['period']), db.office_day(b['uploaded_at']),
              ui.pill('Applied', 'success') if b['status'] == 'applied' else ui.pill('Being checked', 'warn')] for b in recent]
     form = ui.form('/import', req.user['csrf'], ui.field('Excel workbook (.xlsx)', 'workbook', type='file', attrs='accept=".xlsx"',
                                                          hint='The monthly SOA workbook, for example "PHASE 1D SOA OCTOBER 2026.xlsx". Up to 25 MB.'),
@@ -132,7 +132,7 @@ def review_page(req):
                     ('Things to check', f'{open_total:,}')]),
     ]
     if batch['status'] == 'applied':
-        parts.append(ui.notice(f"Applied on {batch['applied_at'][:10]}: {summary.get('created', 0)} homeowners added, {summary.get('updated', 0)} updated, "
+        parts.append(ui.notice(f"Applied on {db.office_day(batch['applied_at'])}: {summary.get('created', 0)} homeowners added, {summary.get('updated', 0)} updated, "
                                f"{summary.get('readings', 0)} readings, {summary.get('opening_lines', 0)} old-balance lines, {summary.get('notes', 0)} notes.", 'success',
                                action=ui.button_link(f"/import/{batch['id']}/parallel", 'Compare with Excel')))
     parts.append(ui.section('Things to check', _issue_list(batch, counts), lead='Each one must be fixed or skipped before Apply.'))

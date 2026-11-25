@@ -423,7 +423,7 @@ def alerts_page(req):
             link = ui.button_link(alert['link'], 'Open', kind='secondary') if alert['link'] else ''
             resolve = ui.form(f"/alerts/{alert['id']}/resolve", req.user['csrf'], '', 'Mark as done') if can_resolve else ''
             severity = {'urgent': ui.pill('Urgent', 'danger'), 'warn': ui.pill('Check', 'warn'), 'info': ui.pill('Note', 'info')}[alert['severity']]
-            table_rows.append([severity, alert['title'], alert['created_at'][:10], link, resolve])
+            table_rows.append([severity, alert['title'], db.office_day(alert['created_at']), link, resolve])
         sections.append(ui.section(label, ui.table(['', 'What', 'Since', '', ''], table_rows)))
     body = ui.join([ui.heading('Alerts', f'{len(rows)} open. Each one links to the page where it can be fixed.', crumbs=[('Home', '/'), 'Alerts'])]
                    + (sections or [ui.empty('Nothing needs attention right now.')]))
@@ -458,7 +458,7 @@ def export(req):
         audit.log(c, req.user, 'export', 'export', req.params['name'], None,
                   {'format': fmt, 'rows': len(rows), **{k: v for k, v in req.query.items() if k in ('period', 'phase', 'from', 'to')}})
     data = exports.to_csv(headers, rows) if fmt == 'csv' else exports.to_xlsx(dataset.title, headers, rows)
-    return Response.download(data, EXPORT_TYPES[fmt], f'{stem}-{date.today().isoformat()}.{fmt}')
+    return Response.download(data, EXPORT_TYPES[fmt], f'{stem}-{db.today()}.{fmt}')
 
 
 def _int_or(text, default):

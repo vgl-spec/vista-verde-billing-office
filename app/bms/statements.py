@@ -16,7 +16,7 @@ from decimal import Decimal
 from io import BytesIO
 from xml.sax.saxutils import escape as xml_escape
 
-from . import ledger, ui
+from . import db, ledger, ui
 from .config import APP_DIR
 
 DOCX_TEMPLATE = APP_DIR.parent / 'templates' / 'Statement of Account Template.docx'
@@ -111,17 +111,18 @@ def short_month(period):
 
 
 def long_date(iso_day):
-    return date.fromisoformat(iso_day).strftime('%B %d, %Y') if iso_day else ''
+    """'2026-11-05' -> 'November 5, 2026'; '' when there is no date."""
+    return db.spoken_date(date.fromisoformat(iso_day)) if iso_day else ''
 
 
 def weekday_date(iso_day):
     """'2026-11-25' -> 'Wednesday, November 25, 2026' (the cash drawer asks staff to confirm the day by name)."""
-    return date.fromisoformat(iso_day).strftime('%A, %B %d, %Y') if iso_day else ''
+    return f"{date.fromisoformat(iso_day):%A}, {long_date(iso_day)}" if iso_day else ''
 
 
 def period_covered(period):
     start, end = day_in(add_months(period, -1), 12), day_in(period, 11)
-    return f"{start.strftime('%B %d, %Y')} to {end.strftime('%B %d, %Y')}"
+    return f"{db.spoken_date(start)} to {db.spoken_date(end)}"
 
 
 # --- aging ---------------------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 """Cashier, payment list, voids, bill cancellation and the audit trail."""
 import json
 import math
+import re
 from datetime import date
 from urllib.parse import urlencode
 
@@ -430,7 +431,7 @@ def payment_list(req):
     ]))
     table = ui.table(
         ['Date', 'Receipt', 'Name', 'Account', 'For', 'Method', 'Amount', 'Status'],
-        [[r['paid_on'], ui.copyable(r['receipt_no'], ui.raw(f'<a href="/payments/{ui.esc(r["id"])}">{ui.esc(receipts.receipt_label(r))}</a>')),
+        [[statements.long_date(r['paid_on']), ui.copyable(r['receipt_no'], ui.raw(f'<a href="/payments/{ui.esc(r["id"])}">{ui.esc(receipts.receipt_label(r))}</a>')),
           ui.copyable(r['name']), ui.copyable(r['account_no']), paid_for.get(r['id'], ''), METHODS[r['method']], ui.money(r['amount_cents']),
           ui.pill('Voided', 'neutral') if r['status'] == 'voided' else ui.pill('Posted', 'success')] for r in rows],
         empty='No payments match these filters.', numeric_cols=(6,), sort=sort, keys=[r['id'] for r in rows])
@@ -472,7 +473,7 @@ def payment_detail(req):
              ('Date paid', statements.long_date(payment['paid_on'])),
              ('Method', METHODS[payment['method']]), ('Status', status)]
     if payment['status'] == 'voided':
-        facts += [('Void reason', payment['void_reason']), ('Voided on', (payment['voided_at'] or '')[:10])]
+        facts += [('Void reason', payment['void_reason']), ('Voided on', db.office_day(payment['voided_at']))]
     label = receipts.receipt_label(payment)
     actions = [ui.button_link(f"/accounts/{payment['account_id']}", 'Open homeowner', kind='secondary')]
     if payment['receipt_type'] in receipts.PRINTABLE_TYPES:
@@ -524,6 +525,11 @@ def cancel_bill(req, c):
 
 # --- audit trail -------------------------------------------------------------------------------------------
 
+# Shapes of stored values in audit details: months as YYYY-MM, moments as db.now() UTC timestamps.
+STORED_MONTH = re.compile(r'\d{4}-(0[1-9]|1[0-2])')
+STORED_TIMESTAMP = re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?')
+
+
 @route('GET', '/payments/audit', roles=ADMIN_ONLY)
 def audit_view(req):
     action = req.query.get('action', '').strip()[:60]
@@ -535,10 +541,10 @@ def audit_view(req):
         params.append(action)
     if start:
         clauses.append('l.at >= ?')
-        params.append(start)
+        params.append(db.office_day_start(start))
     if end:
         clauses.append('l.at < ?')
-        params.append(_next_day(end))
+        params.append(db.office_day_start(_next_day(end)))
     if start and end and start > end:
         raise UserError('The “From” date must be on or before the “To” date.')
     where = (' WHERE ' + ' AND '.join(clauses)) if clauses else ''
@@ -561,8 +567,8 @@ def audit_view(req):
         ui.field('To', 'to', type='date', value=end, required=False),
         ui.raw('<div class="form-actions"><button class="btn btn-primary" type="submit">Show</button></div></form>'),
     ])
-    table = ui.table(['When (UTC)', 'Who', 'What', 'Record', 'Details'],
-                     [[r['at'][:16].replace('T', ' '), r['display_name'] or 'System or other office', r['action'], r['entity'],
+    table = ui.table(['When', 'Who', 'What', 'Record', 'Details'],
+                     [[db.office_minute(r['at']), r['display_name'] or 'System or other office', r['action'], r['entity'],
                        _short_json(r['after'])] for r in rows], empty='Nothing recorded for this filter.', sort=sort)
     body = ui.join([ui.heading('Audit trail', 'Every change and export, newest first.', crumbs=[CASHIER_CRUMB, PAYMENTS_CRUMB, 'Audit trail']),
                     filters, table,
@@ -578,8 +584,21 @@ def _short_json(text):
     except ValueError:
         return text[:120]
     if isinstance(data, dict):
-        return ', '.join(f'{k}: {v}' for k, v in data.items())[:160]
+        return ', '.join(f'{k}: {_readable(v)}' for k, v in data.items())[:160]
     return str(data)[:160]
+
+
+def _readable(value):
+    """Audit details hold raw stored values; show dates, months and timestamps the way staff read them elsewhere."""
+    if not isinstance(value, str):
+        return value
+    if DATE_PATTERN.fullmatch(value):
+        return statements.long_date(value)
+    if STORED_MONTH.fullmatch(value):
+        return statements.month_label(value)
+    if STORED_TIMESTAMP.fullmatch(value):
+        return db.office_minute(value)
+    return value
 
 
 # --- helpers -------------------------------------------------------------------------------------------------

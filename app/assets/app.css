@@ -776,7 +776,8 @@ html.sheet-open { overflow: hidden; }
 .cash-count td { vertical-align: middle; }
 .cash-count .grid-input { width: 7rem; }
 .cash-total { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.drawer-date { font-size: 1.6rem; font-weight: 700; margin: 0.25rem 0 1rem; }
+.drawer-date { font-size: 1.6rem; font-weight: 700; margin: 0.25rem 0 0; }
+.drawer-clock { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); margin: 0 0 1rem; }
 
 /* Tabs wrap into an equal-width grid; they never scroll sideways. */
 .tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); border-bottom: 1px solid var(--line); }

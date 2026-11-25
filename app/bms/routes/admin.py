@@ -122,7 +122,7 @@ def settings_page(req):
         confirmer = c.scalar('SELECT display_name FROM users WHERE id = ?', (values['policy_confirmed_by'],)) if values['policy_confirmed_by'] else ''
     holder = editing.acquire(*SETTINGS_LOCK, req.user)
     confirmed = bool(values['policy_confirmed'])
-    status = (ui.notice(f"The office confirmed these billing rules ({confirmer or 'unknown user'}, {values['policy_confirmed_at'][:10]}).", 'success')
+    status = (ui.notice(f"The office confirmed these billing rules ({confirmer or 'unknown user'}, {db.office_day(values['policy_confirmed_at'])}).", 'success')
               if confirmed else ui.notice('The billing rules below still need the office to confirm them.', 'warn'))
     fields = ui.join([
         *[ui.field(label, key, type='textarea' if multiline else 'text', value=values[key], required=False)
@@ -399,12 +399,12 @@ def rates_page(req):
                 for kind, labels in (('minimums', billing.MINIMUM_LABELS), ('steps', billing.STEP_LABELS))
                 for index, label in enumerate(labels)]
         picker = ui.raw('<form class="form filters" method="get" action="/admin/rates">') + ui.select(
-            'Rate version', 'version', [(p['id'], f"{p['label']} · starts {p['effective_from']}") for p in plans], value=chosen_id
+            'Rate version', 'version', [(p['id'], f"{p['label']} · starts {statements.long_date(p['effective_from'])}") for p in plans], value=chosen_id
         ) + ui.raw('</form>')
         shown = ui.join([picker, ui.section(chosen['label'], ui.table(['Water used', 'Residential', 'Commercial'], rows, numeric_cols=(1, 2)),
-                                            lead=f"Starts {chosen['effective_from']}" + (f" · {chosen['note']}" if chosen['note'] else ''))])
+                                            lead=f"Starts {statements.long_date(chosen['effective_from'])}" + (f" · {chosen['note']}" if chosen['note'] else ''))])
     history = ui.table(['Version', 'Starts on', 'Why it changed', ''],
-                       [[ui.raw(f'<a href="/admin/rates?version={ui.esc(p["id"])}">{ui.esc(p["label"])}</a>'), p['effective_from'],
+                       [[ui.raw(f'<a href="/admin/rates?version={ui.esc(p["id"])}">{ui.esc(p["label"])}</a>'), statements.long_date(p['effective_from']),
                          p['note'] or '—', state(p)] for p in plans], empty='No rate versions yet.')
     actions = ui.button_link('/admin/rates/new', 'New rate version')
     body = ui.join([ui.notice('Rates are never edited. A change is a new version with its own start date; old bills keep the rates they were made with.'),
@@ -557,7 +557,7 @@ def backup_page(req):
         return _page(req, 'Backup', body, 'backup')
     with db.connect() as c:
         last = c.one("SELECT at FROM audit_log WHERE action = 'backup.download' ORDER BY at DESC LIMIT 1")
-    lead = f"Last backup downloaded on {last['at'][:10]}." if last else 'No backup has been downloaded yet.'
+    lead = f"Last backup downloaded on {db.office_day(last['at'])}." if last else 'No backup has been downloaded yet.'
     body = ui.join([
         ui.notice('The backup file holds every homeowner\'s records. Keep it on a USB drive locked in the office, never in email or chat.', 'warn'),
         ui.section('Full backup (to restore the system)', ui.form('/admin/backup', req.user['csrf'], '', 'Download backup'),
@@ -665,10 +665,10 @@ def sync_page(req):
 def _sync_status(state, consent_name):
     facts = [('Sync', 'On' if state['enabled'] else 'Off')]
     if state['enabled']:
-        facts.append(('Switched on by', f"{consent_name or 'unknown'} on {state['consent_at'][:10]}"))
+        facts.append(('Switched on by', f"{consent_name or 'unknown'} on {db.office_day(state['consent_at'])}"))
     if state['hub_url']:
         facts += [('Online server', state['hub_url']), ('Changes waiting to send', f"{state['unpushed']:,}"),
-                  ('Last received', state['last_pull_at'][:16].replace('T', ' ') or 'never')]
+                  ('Last received', db.office_minute(state['last_pull_at']) or 'never')]
     if state['dead']:
         facts.append(('Changes refused by the server', f"{state['dead']:,}"))
     if state['waiting']:
@@ -704,7 +704,7 @@ def _nodes_section(req, nodes):
     for node in nodes:
         action = ui.pill('Removed', 'neutral') if node['revoked_at'] else ui.form(
             f"/admin/sync/nodes/{node['node_id']}/revoke", req.user['csrf'], '', 'Remove', danger=True, confirm='Yes, remove')
-        rows.append([node['name'], node['created_at'][:10], (node['last_seen'] or '')[:16].replace('T', ' ') or 'never', action])
+        rows.append([node['name'], db.office_day(node['created_at']), db.office_minute(node['last_seen']) or 'never', action])
     form = ui.form('/admin/sync/nodes', req.user['csrf'], ui.field('Office computer name', 'name', hint='For example: Phase 1D office'), 'Add office computer')
     return ui.section('Office computers that sync here', ui.table(['Name', 'Added', 'Last contact', ''], rows, empty='No office computers yet.') + form)
 
@@ -805,7 +805,14 @@ def _summary(c, table, row):
     for column, label in labels.items():
         if column in row and row[column] is not None:
             value = row[column]
-            summary[label] = format_pesos(value) if column.endswith('_cents') and isinstance(value, int) else str(value)
+            if column.endswith('_cents') and isinstance(value, int):
+                summary[label] = format_pesos(value)
+            elif column == 'paid_on':
+                summary[label] = statements.long_date(value)
+            elif column == 'period':
+                summary[label] = statements.month_label(value)
+            else:
+                summary[label] = str(value)
     return summary
 
 

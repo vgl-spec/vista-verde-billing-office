@@ -111,8 +111,11 @@ def _start_card(today, previous_drawer, previous_closing):
     return ui.well(ui.join([
         ui.raw('<p class="muted">Step 1 of 3: check today’s date</p>'),
         ui.raw(f'<p class="drawer-date">{ui.esc(_day_text(today))}</p>'),
-        ui.raw('<p>Is this today’s date? If not, the computer’s clock is wrong: tell the administrator before taking '
-               'any payment.</p>'),
+        _live_clock(),
+        # The date is the SERVER computer's clock (Manila date), never the laptop's, so the fix is on the server.
+        ui.raw('<p>Is this today’s date? If not, do not start the day: the server computer’s clock is wrong. On the '
+               'server computer, the administrator opens Settings &gt; Time &amp; language &gt; Date &amp; time, turns on '
+               '“Set time automatically” and presses “Sync now”, then reloads this page.</p>'),
         ui.figures(figures) if figures else ui.raw(''),
         ui.raw('<div class="form-actions">'),
         ui.button_link(f'{HOME}/open', 'Yes, this is today. Count the opening cash'),
@@ -389,7 +392,7 @@ def day_report(req):
         cash_drawer.load_counts(drawer['opening_counts']),
         cash_drawer.load_counts(standing['closing_counts']) if standing else None)))
     parts.append(ui.section('Cash collected this day', ui.table(
-        ['Time (UTC)', 'Receipt', 'Homeowner', 'Recorded by', 'Amount'],
+        ['Time', 'Receipt', 'Homeowner', 'Recorded by', 'Amount'],
         [[_when(r['created_at']), ui.raw(f'<a href="/payments/{ui.esc(r["id"])}">{ui.esc(receipt_label(r))}</a>'), r['name'],
           r['cashier'] or '—', ui.money(r['amount_cents'])] for r in cash_rows],
         empty='No cash payments on this day.', numeric_cols=(4,),
@@ -565,7 +568,14 @@ def _day_text(iso_day):
 
 
 def _when(timestamp):
-    return (timestamp or '')[:16].replace('T', ' ') + ' UTC' if timestamp else '—'
+    return db.office_minute(timestamp) or '—'
+
+
+def _live_clock():
+    """The server's time, ticking in the browser (app.js setupLiveClock). Seeded from the server, never the laptop's
+    clock, so a wrong server clock shows here before anyone starts the day on the wrong date."""
+    now = db.now()
+    return ui.raw(f'<p class="drawer-clock" data-server-now="{ui.esc(now)}">{ui.esc(db.office_clock(now))}</p>')
 
 
 def _int_or(text, default):

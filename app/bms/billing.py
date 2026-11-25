@@ -189,7 +189,7 @@ def current_period(c):
     raw = c.scalar("SELECT value FROM settings WHERE key = 'current_period'")
     if raw is not None:
         return json.loads(raw)
-    first_of_month = date.today().replace(day=1)
+    first_of_month = date.fromisoformat(db.today()).replace(day=1)
     return (first_of_month - timedelta(days=1)).strftime('%Y-%m')
 
 

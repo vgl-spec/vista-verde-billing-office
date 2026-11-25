@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from urllib.parse import urlencode
 
-from .. import UserError, audit, db, editing, ledger, ui
+from .. import UserError, audit, db, editing, ledger, statements, ui
 from ..http import NotFound, Redirect, ShowPage, route
 
 READ_ROLES = ('admin', 'staff', 'cashier')
@@ -277,14 +277,14 @@ def account_detail(req):
         ui.section('Account ledger', _ledger_table(rows), lead=_ledger_lead(len(rows))),
         ui.section('Water meters', ui.table(
             ['Meter no.', 'Installed', 'Removed', 'Starting reading'],
-            [[ui.copyable(m['meter_no']), m['installed_on'] or '—', m['removed_on'] or '—', m['start_reading'] or '—'] for m in meters],
+            [[ui.copyable(m['meter_no']), statements.long_date(m['installed_on']) or '—', statements.long_date(m['removed_on']) or '—', m['start_reading'] or '—'] for m in meters],
             empty='No meter on file.')),
         ui.section('Meter readings', ui.table(
             ['Month', 'Previous', 'Present', 'Used (m³)', 'Flag'],
             [[_month_label(r['period']), r['previous'], r['present'], _used(r['previous'], r['present']), r['flag'] or '—'] for r in readings],
             empty='No readings entered yet.', numeric_cols=(1, 2, 3))),
         ui.section('Notes from the old records', ui.table(
-            ['Date', 'Note', 'Source'], [[n['created_at'][:10], n['note'], n['source'] or '—'] for n in notes],
+            ['Date', 'Note', 'Source'], [[db.office_day(n['created_at']), n['note'], n['source'] or '—'] for n in notes],
             empty='No notes.')),
         _adjust_section(req, account) if req.user['role'] == 'admin' else '',
     ])
@@ -345,7 +345,7 @@ def _ledger_table(rows):
     shown = rows[:LEDGER_ROWS_SHOWN]
     return ui.table(
         ['Date', 'Description', 'Charge', 'Credit', 'Balance'],
-        [[r['posted_on'], _describe(r), ui.money(r['amount_cents']) if r['amount_cents'] > 0 else '',
+        [[statements.long_date(r['posted_on']), _describe(r), ui.money(r['amount_cents']) if r['amount_cents'] > 0 else '',
           ui.money(-r['amount_cents']) if r['amount_cents'] < 0 else '', ui.money(r['balance_cents'])] for r in shown],
         empty='Nothing has been billed or paid yet.', numeric_cols=(2, 3, 4))
 

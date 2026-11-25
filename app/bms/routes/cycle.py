@@ -457,7 +457,7 @@ def _review_panel(c, period, clause, params):
         table_rows.append([
             ui.copyable(r['account_no']), ui.copyable(r['name'], ui.raw(f'<a href="/accounts/{e(r["account_id"])}">{e(r["name"])}</a>')),
             r['previous'], r['present'], format_reading(used),
-            ui.pill(r['flag'].capitalize(), 'warn') if r['flag'] else '—', r['read_on'] or '—', r['entered_by'] or '—', action])
+            ui.pill(r['flag'].capitalize(), 'warn') if r['flag'] else '—', statements.long_date(r['read_on']) or '—', r['entered_by'] or '—', action])
     summary = (f'{len(rows):,} saved · {flagged:,} to double-check · {format_reading(total)} m³ in all'
                + (f' · showing the first {MAX_REVIEW_ROWS:,}; narrow the phase or search to see the rest' if cut else ''))
     table = ui.table(['Account', 'Name', 'Previous', 'Present', 'Used (m³)', 'Flag', 'Date read', 'Typed by', ''], table_rows,
@@ -583,7 +583,7 @@ def readings_resolve_page(req):
         field = f'present_{e(account_id)}'
         rows.append(f'<tr><th scope="row">{e(account["account_no"])}<span class="grid-sub">{e(account["name"])}</span></th>'
                     f'<td><label class="pick"><input type="radio" name="{field}" value="{e(current["present"])}"> '
-                    f'<span>{e(current["present"])}<span class="grid-sub">{e(who)}, {e(current["entered_at"][11:16])} UTC</span></span></label></td>'
+                    f'<span>{e(current["present"])}<span class="grid-sub">{e(who)}, {e(db.office_clock(current["entered_at"]))}</span></span></label></td>'
                     f'<td><label class="pick"><input type="radio" name="{field}" value="{e(mine)}" checked> <span>{e(mine)}</span></label></td></tr>')
         hidden.append(f'<input type="hidden" name="v_{e(account_id)}" value="{current["version"]}">'
                       f'<input type="hidden" name="base_present_{e(account_id)}" value="{e(current["present"])}">')
@@ -695,7 +695,7 @@ def edit_reading_page(req):
         ('Account no.', ui.copyable(account['account_no'])), ('Meter no.', _meter_no(ctx, account['id']) or '—'),
         ('Previous reading', current['previous']), ('Saved present reading', current['present']),
         ('Used', f'{format_reading(used)} m³'), ('Flag', current['flag'].capitalize() or '—'),
-        ('Typed by', f"{typed_by or '—'} · {current['entered_at'][:16].replace('T', ' ')} UTC"),
+        ('Typed by', f"{typed_by or '—'} · {db.office_minute(current['entered_at'])}"),
     ])
     crumbs = [CYCLE_CRUMB, ('Enter readings', back), f"Edit reading · {account['name']}"]
     heading = ui.heading('Correct a saved reading', f"{account['name']} · {statements.month_label(period)}", crumbs=crumbs)

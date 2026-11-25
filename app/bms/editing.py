@@ -67,7 +67,7 @@ def take_over(c, entity, entity_id, user):
 
 def lock_banner(holder, entity, entity_id, *, can_take_over, csrf, back):
     """The notice above a read-only edit form; app.js reloads the page when the lock frees."""
-    since = holder['acquired_at'][11:16]
+    since = db.office_clock(holder['acquired_at'])
     take = ''
     if can_take_over:
         take = ui.form('/locks/take-over', csrf, ui.raw(
@@ -76,7 +76,7 @@ def lock_banner(holder, entity, entity_id, *, can_take_over, csrf, back):
             'Take over editing', danger=True,
             confirm=f"{holder['user_name']} may lose what they typed. Take over editing?")
     return ui.raw(f'<div class="lock-banner" data-lock-wait data-entity="{ui.esc(entity)}" data-entity-id="{ui.esc(entity_id)}">'
-                  f'<p><strong>{ui.esc(holder["user_name"])} is editing this</strong> on another computer (since {ui.esc(since)} UTC). '
+                  f'<p><strong>{ui.esc(holder["user_name"])} is editing this</strong> on another computer (since {ui.esc(since)}). '
                   'You can look, but editing opens here by itself when they are done.</p></div>') + take
 
 
@@ -181,7 +181,7 @@ def last_change(c, entity, entity_id):
                 'WHERE l.entity = ? AND l.entity_id = ? ORDER BY l.at DESC LIMIT 1', (entity, entity_id))
     if row is None:
         return 'Someone else', 'just now'
-    return row['display_name'] or 'Someone else', f"{row['at'][:16].replace('T', ' ')} UTC"
+    return row['display_name'] or 'Someone else', db.office_minute(row['at'])
 
 
 def kept_note(kept, labels, who):
